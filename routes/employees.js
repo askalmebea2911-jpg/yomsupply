@@ -143,6 +143,35 @@ router.post('/:id/reset-password', authenticate, authorize('admin'), async (req,
   }
 });
 
+// Check if employees table exists
+router.get('/check-table', authenticate, authorize('admin'), async (req, res) => {
+  try {
+    const db = getDb();
+    const table = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'");
+    if (!table) {
+      await db.exec(`
+        CREATE TABLE IF NOT EXISTS employees (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          phone TEXT,
+          position TEXT,
+          employee_type TEXT DEFAULT 'sales',
+          salary REAL,
+          hire_date DATE,
+          is_active INTEGER DEFAULT 1,
+          user_id INTEGER
+        )
+      `);
+      res.json({ message: 'Employees table created successfully' });
+    } else {
+      const count = await db.get('SELECT COUNT(*) as count FROM employees');
+      res.json({ message: 'Employees table exists', count: count.count });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get employee types
 router.get('/types/list', authenticate, async (req, res) => {
   const types = [
