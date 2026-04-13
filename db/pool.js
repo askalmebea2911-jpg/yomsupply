@@ -6,23 +6,24 @@ const fs = require('fs');
 let db;
 
 async function initDatabase() {
-  const dbPath = path.join(__dirname, '..', 'yom_sales.db');
-  
-  // Reset database if RESET_DB is true
-  if (process.env.RESET_DB === 'true') {
-    console.log('Resetting database...');
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-      console.log('Old database deleted');
-    }
+  // Use persistent disk if available, otherwise local
+  let dbPath;
+  if (fs.existsSync('/data')) {
+    dbPath = path.join('/data', 'yom_sales.db');
+    console.log('Using persistent disk at /data');
+  } else {
+    dbPath = path.join(__dirname, '..', 'yom_sales.db');
+    console.log('Using local database');
   }
+  
+  console.log('Database path:', dbPath);
   
   db = await open({
     filename: dbPath,
     driver: sqlite3.Database
   });
 
-  // Read and execute schema
+  // Create tables
   const schemaPath = path.join(__dirname, 'schema.sql');
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await db.exec(schema);
@@ -40,10 +41,6 @@ async function initDatabase() {
     );
     console.log('Admin user created: admin / admin123');
   }
-  
-  // Check if employees table has data
-  const empCount = await db.get('SELECT COUNT(*) as count FROM employees');
-  console.log('Employees count:', empCount.count);
   
   return db;
 }
