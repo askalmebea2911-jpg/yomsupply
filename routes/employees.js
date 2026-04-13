@@ -14,6 +14,7 @@ async function generateUsername(fullName, employeeType, db) {
   let baseName = fullName.toLowerCase().replace(/\s/g, '').substring(0, 5);
   const typeCode = getEmployeeTypeCode(employeeType);
   let username = `${typeCode}${baseName}`;
+  
   const existing = await db.get('SELECT id FROM users WHERE username = ?', username);
   if (existing) {
     username = `${username}${Math.floor(Math.random() * 100)}`;
@@ -53,37 +54,56 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create employee
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
   try {
+    console.log('Received employee data:', req.body);
+    
     const { name, phone, position, employee_type, salary, hire_date, create_user_account } = req.body;
-    if (!name) return res.status(400).json({ error: 'ስም ያስፈልጋል' });
+    
+    if (!name) {
+      return res.status(400).json({ error: 'ስም ያስፈልጋል' });
+    }
     
     const db = getDb();
+    
+    // Insert employee
     const result = await db.run(
-      `INSERT INTO employees (name, phone, position, employee_type, salary, hire_date) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO employees (name, phone, position, employee_type, salary, hire_date, is_active) 
+       VALUES (?, ?, ?, ?, ?, ?, 1)`,
       [name, phone || '', position || '', employee_type || 'sales', salary || 0, hire_date || null]
     );
     
     const employeeId = result.lastID;
     let userAccount = null;
     
-    if (create_user_account !== false) {
+    // Create user account if requested
+    if (create_user_account === true || create_user_account === 'true') {
       const username = await generateUsername(name, employee_type || 'sales', db);
-      const tempPassword = 'Temp@' + Math.floor(10000 + Math.random() * 90000);
+      const tempPassword = 'Temp@' + Math.floor(1000 + Math.random() * 9000);
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
       
       await db.run(
-        `INSERT INTO users (username, password, full_name, role, employee_type, employee_id) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [username, hashedPassword, name, 'staff', employee_type || 'sales', employeeId]
+        `INSERT INTO users (username, password, full_name, role, employee_type, employee_id, is_active) 
+         VALUES (?, ?, ?, 'staff', ?, ?, 1)`,
+        [username, hashedPassword, name, employee_type || 'sales', employeeId]
       );
       
+      // Get the user id and update employee
       const user = await db.get('SELECT id FROM users WHERE employee_id = ?', employeeId);
-      await db.run('UPDATE employees SET user_id = ? WHERE id = ?', [user.id, employeeId]);
+      if (user) {
+        await db.run('UPDATE employees SET user_id = ? WHERE id = ?', [user.id, employeeId]);
+      }
+      
       userAccount = { username, tempPassword };
+      console.log('Created user account:', userAccount);
     }
     
     const newEmployee = await db.get('SELECT * FROM employees WHERE id = ?', employeeId);
-    res.status(201).json({ employee: newEmployee, userAccount });
+    
+    res.status(201).json({ 
+      success: true, 
+      employee: newEmployee, 
+      userAccount: userAccount 
+    });
+    
   } catch (error) {
     console.error('Create employee error:', error);
     res.status(500).json({ error: error.message });
@@ -133,11 +153,11 @@ router.post('/:id/reset-password', authenticate, authorize('admin'), async (req,
     const employee = await db.get('SELECT * FROM employees WHERE id = ?', req.params.id);
     if (!employee) return res.status(404).json({ error: 'ሰራተኛ አልተገኘም' });
     
-    const tempPassword = 'Temp@' + Math.floor(10000 + Math.random() * 90000);
+    const tempPassword = 'Temp@' + Math.floor(1000 + Math.random() * 9000);
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
     await db.run('UPDATE users SET password = ? WHERE employee_id = ?', [hashedPassword, req.params.id]);
-    res.json({ success: true, tempPassword });
+    res.json({ success: true, tempPassword: tempPassword });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
