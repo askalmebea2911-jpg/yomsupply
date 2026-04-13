@@ -38,4 +38,53 @@ router.post('/change-password', authenticate, async (req, res) => {
   res.json({ success: true, message: 'ይለፍ ቃል ተቀይሯል' });
 });
 
+// Reset password for employee (admin only)
+router.post('/reset-password/:id', authenticate, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
+  }
+  
+  const { new_password } = req.body;
+  const userId = req.params.id;
+  
+  if (!new_password || new_password.length < 4) {
+    return res.status(400).json({ error: 'አዲስ ይለፍ ቃል ቢያንስ 4 ፊደላት ሊኖረው ይገባል' });
+  }
+  
+  const db = getDb();
+  const hashedPassword = await bcrypt.hash(new_password, 10);
+  await db.run('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+  
+  res.json({ success: true, message: 'ይለፍ ቃል ተስተካክሏል' });
+});
+
+// Deactivate user (admin only)
+router.put('/deactivate/:id', authenticate, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
+  }
+  
+  const userId = req.params.id;
+  if (userId == req.user.id) {
+    return res.status(400).json({ error: 'ራስዎን ማሰናከል አይችሉም' });
+  }
+  
+  const db = getDb();
+  await db.run('UPDATE users SET is_active = 0 WHERE id = ?', userId);
+  
+  res.json({ success: true, message: 'ተጠቃሚ ተሰናክሏል' });
+});
+
+// Activate user (admin only)
+router.put('/activate/:id', authenticate, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
+  }
+  
+  const db = getDb();
+  await db.run('UPDATE users SET is_active = 1 WHERE id = ?', req.params.id);
+  
+  res.json({ success: true, message: 'ተጠቃሚ ንቁ ተደርጓል' });
+});
+
 module.exports = router;
