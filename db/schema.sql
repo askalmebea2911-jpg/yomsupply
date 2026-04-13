@@ -1,4 +1,4 @@
--- Users table
+-- Users table (የተሻሻለ)
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
@@ -6,10 +6,25 @@ CREATE TABLE IF NOT EXISTS users (
   full_name TEXT NOT NULL,
   role TEXT DEFAULT 'staff',
   is_active INTEGER DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  employee_id INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (employee_id) REFERENCES employees(id)
 );
 
--- Customers table
+-- Employees table (የተሻሻለ)
+CREATE TABLE IF NOT EXISTS employees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  phone TEXT,
+  position TEXT,
+  salary REAL,
+  hire_date DATE,
+  is_active INTEGER DEFAULT 1,
+  user_id INTEGER,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- ቀሪዎቹ ሰንጠረዦች እንደቀድሞው ይቆያሉ
 CREATE TABLE IF NOT EXISTS customers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -23,7 +38,6 @@ CREATE TABLE IF NOT EXISTS customers (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Products table
 CREATE TABLE IF NOT EXISTS products (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -38,7 +52,6 @@ CREATE TABLE IF NOT EXISTS products (
   is_active INTEGER DEFAULT 1
 );
 
--- Sales table
 CREATE TABLE IF NOT EXISTS sales (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   invoice_number TEXT UNIQUE NOT NULL,
@@ -57,7 +70,6 @@ CREATE TABLE IF NOT EXISTS sales (
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Sale items table
 CREATE TABLE IF NOT EXISTS sale_items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sale_id INTEGER NOT NULL,
@@ -69,18 +81,6 @@ CREATE TABLE IF NOT EXISTS sale_items (
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Employees table
-CREATE TABLE IF NOT EXISTS employees (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  phone TEXT,
-  position TEXT,
-  salary REAL,
-  hire_date DATE,
-  is_active INTEGER DEFAULT 1
-);
-
--- Vehicles table
 CREATE TABLE IF NOT EXISTS vehicles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   plate_number TEXT UNIQUE NOT NULL,
@@ -91,7 +91,6 @@ CREATE TABLE IF NOT EXISTS vehicles (
   notes TEXT
 );
 
--- Expenses table
 CREATE TABLE IF NOT EXISTS expenses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   category TEXT NOT NULL,
@@ -104,7 +103,6 @@ CREATE TABLE IF NOT EXISTS expenses (
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Preorders table
 CREATE TABLE IF NOT EXISTS preorders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   customer_id INTEGER,
@@ -118,7 +116,6 @@ CREATE TABLE IF NOT EXISTS preorders (
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Warehouse transactions
 CREATE TABLE IF NOT EXISTS warehouse_transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL,
@@ -130,7 +127,6 @@ CREATE TABLE IF NOT EXISTS warehouse_transactions (
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Tracking (GPS)
 CREATE TABLE IF NOT EXISTS tracking (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   vehicle_id INTEGER,
