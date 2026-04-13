@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 
 function getEmployeeTypeCode(type) {
-  const codes = { 'sales': 'SAL', 'admin': 'ADM', 'manager': 'MGR', 'warehouse': 'WRH' };
+  const codes = { 'sales': 'SAL', 'admin': 'ADM', 'manager': 'MGR', 'warehouse': 'WRH', 'accountant': 'ACC' };
   return codes[type] || 'EMP';
 }
 
@@ -74,19 +74,26 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     const employeeId = result.lastID;
     let userAccount = null;
     
-    // Create user account if requested (default is true)
+    // Create user account if requested
     if (create_user_account !== false && create_user_account !== 'false') {
       const username = await generateUsername(name, employee_type || 'sales', db);
       const tempPassword = 'Temp@' + Math.floor(1000 + Math.random() * 9000);
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
       
+      // Set role based on employee type
+      let role = 'staff';
+      if (employee_type === 'admin') role = 'admin';
+      else if (employee_type === 'accountant') role = 'accountant';
+      else if (employee_type === 'manager') role = 'manager';
+      else if (employee_type === 'warehouse') role = 'warehouse';
+      else if (employee_type === 'sales') role = 'sales';
+      
       await db.run(
         `INSERT INTO users (username, password, full_name, role, employee_type, employee_id, is_active) 
-         VALUES (?, ?, ?, 'staff', ?, ?, 1)`,
-        [username, hashedPassword, name, employee_type || 'sales', employeeId]
+         VALUES (?, ?, ?, ?, ?, ?, 1)`,
+        [username, hashedPassword, name, role, employee_type || 'sales', employeeId]
       );
       
-      // Get the user id and update employee
       const user = await db.get('SELECT id FROM users WHERE employee_id = ?', employeeId);
       if (user) {
         await db.run('UPDATE employees SET user_id = ? WHERE id = ?', [user.id, employeeId]);
@@ -123,8 +130,15 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
     
     const user = await db.get('SELECT id FROM users WHERE employee_id = ?', req.params.id);
     if (user) {
-      await db.run('UPDATE users SET full_name = ?, is_active = ?, employee_type = ? WHERE employee_id = ?', 
-        [name, is_active, employee_type, req.params.id]);
+      let role = 'staff';
+      if (employee_type === 'admin') role = 'admin';
+      else if (employee_type === 'accountant') role = 'accountant';
+      else if (employee_type === 'manager') role = 'manager';
+      else if (employee_type === 'warehouse') role = 'warehouse';
+      else if (employee_type === 'sales') role = 'sales';
+      
+      await db.run('UPDATE users SET full_name = ?, is_active = ?, employee_type = ?, role = ? WHERE employee_id = ?', 
+        [name, is_active, employee_type, role, req.params.id]);
     }
     
     const updated = await db.get('SELECT * FROM employees WHERE id = ?', req.params.id);
@@ -198,7 +212,8 @@ router.get('/types/list', authenticate, async (req, res) => {
     { value: 'sales', label: 'የሽያጭ ሰራተኛ', code: 'SAL' },
     { value: 'admin', label: 'አስተዳዳሪ', code: 'ADM' },
     { value: 'manager', label: 'ማኔጅር', code: 'MGR' },
-    { value: 'warehouse', label: 'የመጋዘን ሰራተኛ', code: 'WRH' }
+    { value: 'warehouse', label: 'የመጋዘን ሰራተኛ', code: 'WRH' },
+    { value: 'accountant', label: 'ሂሳብ ሰራተኛ', code: 'ACC' }
   ];
   res.json(types);
 });
