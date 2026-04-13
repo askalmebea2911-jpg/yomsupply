@@ -4,7 +4,6 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Generate invoice number
 async function generateInvoiceNumber() {
   const db = getDb();
   const result = await db.get("SELECT invoice_number FROM sales ORDER BY id DESC LIMIT 1");
@@ -30,7 +29,6 @@ router.get('/', authenticate, async (req, res) => {
 // Get single sale with items
 router.get('/:id', authenticate, async (req, res) => {
   const db = getDb();
-  
   const sale = await db.get(`
     SELECT s.*, c.name as customer_name, u.full_name as created_by_name
     FROM sales s
@@ -62,19 +60,20 @@ router.post('/', authenticate, async (req, res) => {
   const db = getDb();
   const invoice_number = await generateInvoiceNumber();
   
-  // Calculate totals
   let subtotal = 0;
   for (const item of items) {
-    const product = await db.get('SELECT selling_price FROM products WHERE id = ?', item.product_id);
-    const price = item.unit_price || product.selling_price;
-    subtotal += price * item.quantity;
+    const product = await db.get('SELECT selling_price, current_stock FROM products WHERE id = ?', item.product_id);
+    if (!product) return res.status(400).json({ error: 'ምርት አልተገኘም' });
+    if (product.current_stock < item.quantity) {
+      return res.status(400).json({ error: 'በቂ ክምችት የለም' });
+    }
+    subtotal += product.selling_price * item.quantity;
   }
   
   const total = subtotal - (discount || 0);
   const remaining = total - (amount_paid || 0);
   const payment_status = remaining <= 0 ? 'paid' : (amount_paid > 0 ? 'partial' : 'unpaid');
   
-  // Create sale
   const result = await db.run(
     `INSERT INTO sales (invoice_number, customer_id, subtotal, discount, total, amount_paid, remaining, payment_status, payment_method, notes, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -83,10 +82,9 @@ router.post('/', authenticate, async (req, res) => {
   
   const saleId = result.lastID;
   
-  // Add items and update stock
   for (const item of items) {
     const product = await db.get('SELECT selling_price FROM products WHERE id = ?', item.product_id);
-    const unit_price = item.unit_price || product.selling_price;
+    const unit_price = product.selling_price;
     const itemTotal = unit_price * item.quantity;
     
     await db.run(
@@ -94,17 +92,13 @@ router.post('/', authenticate, async (req, res) => {
       [saleId, item.product_id, item.quantity, unit_price, itemTotal]
     );
     
-    // Update stock
     await db.run('UPDATE products SET current_stock = current_stock - ? WHERE id = ?', [item.quantity, item.product_id]);
-    
-    // Record warehouse transaction
     await db.run(
       'INSERT INTO warehouse_transactions (product_id, transaction_type, quantity, reference_id, notes) VALUES (?, ?, ?, ?, ?)',
       [item.product_id, 'sale_out', item.quantity, saleId, `ሽያጭ ${invoice_number}`]
     );
   }
   
-  // Update customer credit if credit sale
   if (customer_id && remaining > 0) {
     await db.run('UPDATE customers SET current_credit = current_credit + ? WHERE id = ?', [remaining, customer_id]);
   }
@@ -130,7 +124,6 @@ router.put('/:id/payment', authenticate, async (req, res) => {
     [newPaid, newRemaining, payment_status, req.params.id]
   );
   
-  // Update customer credit
   if (sale.customer_id) {
     await db.run('UPDATE customers SET current_credit = current_credit - ? WHERE id = ?', [amount, sale.customer_id]);
   }
@@ -141,13 +134,10 @@ router.put('/:id/payment', authenticate, async (req, res) => {
 // Delete sale
 router.delete('/:id', authenticate, async (req, res) => {
   const db = getDb();
-  
-  // Get items to restore stock
   const items = await db.all('SELECT * FROM sale_items WHERE sale_id = ?', req.params.id);
   for (const item of items) {
     await db.run('UPDATE products SET current_stock = current_stock + ? WHERE id = ?', [item.quantity, item.product_id]);
   }
-  
   await db.run('DELETE FROM sales WHERE id = ?', req.params.id);
   res.json({ success: true });
 });
