@@ -7,7 +7,6 @@ let db;
 
 async function initDatabase() {
   const dbPath = path.join(__dirname, '..', 'yom_sales.db');
-  
   console.log('ውሂብ ጎታ መንገድ:', dbPath);
   
   db = await open({
@@ -22,7 +21,7 @@ async function initDatabase() {
   
   console.log('የውሂብ ጎታ ተጀምሯል');
   
-  // Create default admin user if not exists
+  // Create default admin user
   const admin = await db.get("SELECT * FROM users WHERE username = 'admin'");
   if (!admin) {
     const bcrypt = require('bcryptjs');
