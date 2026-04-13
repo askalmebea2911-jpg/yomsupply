@@ -14,13 +14,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session
+// Session - ማስጠንቀቂያውን ለማስወገድ የተሻሻለ
 app.use(session({
   secret: process.env.SESSION_SECRET || 'yom_sales_secret_key_2024',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false,
+    secure: false,  // ለRender ከሆነ true ያስፈልጋል
     maxAge: 24 * 60 * 60 * 1000 
   }
 }));
