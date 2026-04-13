@@ -450,45 +450,49 @@
             }
         }
         
-        async function loadEmployees() {
-            const res = await fetchAPI('/api/employees');
-            const employees = await res.json();
-            const types = await fetchAPI('/api/employees/types/list').then(r=>r.json());
-            document.getElementById('content').innerHTML = `
-                <div class="form-container"><h3>➕ አዲስ ሰራተኛ</h3>
-                    <div class="form-group"><label>ሙሉ ስም</label><input type="text" id="empName" onkeyup="previewUsername()"></div>
-                    <div class="form-group"><label>ስልክ</label><input type="text" id="empPhone"></div>
-                    <div class="form-group"><label>ሹመት</label><input type="text" id="empPosition"></div>
-                    <div class="form-group"><label>ምድብ</label>
-                        <select id="empType" onchange="previewUsername()">
-                            ${types.map(t => `<option value="${t.value}">${t.label} (${t.code})</option>`).join('')}
-                        </select>
-                    </div>
-                    <div class="form-group"><label>ደሞዝ</label><input type="number" id="empSalary"></div>
-                    <div class="form-group"><label><input type="checkbox" id="createUser" checked onchange="togglePreview()"> የተጠቃሚ አካውንት ፍጠር</label></div>
-                    <div id="usernamePreview" class="preview-box" style="display:none">
-                        <label>📝 የሚፈጠረው የተጠቃሚ ስም:</label><br>
-                        <span id="previewUsernameSpan">-</span>
-                    </div>
-                    <button class="btn-primary" onclick="addEmployee()">አስገባ</button>
-                </div>
-                <div class="data-table"><h3>👨‍💼 የሰራተኞች ዝርዝር</h3>
-                <table><thead><tr><th>ስም</th><th>ስልክ</th><th>ሹመት</th><th>ምድብ</th><th>ደሞዝ</th><th>የተጠቃሚ ስም</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
-                <tbody>${employees.map(e => `<tr>
-                    <td>${e.name}</td>
-                    <td>${e.phone || '-'}</td>
-                    <td>${e.position || '-'}</td>
-                    <td>${e.employee_type === 'sales' ? '🟢 የሽያጭ' : (e.employee_type === 'admin' ? '🔵 አስተዳዳሪ' : (e.employee_type === 'manager' ? '🟠 ማኔጅር' : '🟣 መጋዘን'))}</td>
-                    <td>${e.salary || 0} ብር</td><td>${e.username || '-'}</td>
-                    <td>${e.is_active ? '✅ ንቁ' : '❌ ተቋርጧል'}</td>
-                    <td><button class="btn-danger" onclick="deleteEmployee(${e.id})">🗑 ሰርዝ</button> 
-                        ${e.user_id ? `<button class="btn-warning" onclick="resetEmployeePassword(${e.id})">🔄 ፓስወርድ ዳግም አስጀምር</button>` : ''}
-                       </td>
-                </tr>`).join('')}</tbody>
-                </table></div>
-            `;
-            togglePreview();
+       async function addEmployee() {
+    const name = document.getElementById('empName').value;
+    if(!name) return alert('ስም ያስገቡ');
+    
+    const createUser = document.getElementById('createUser') ? document.getElementById('createUser').checked : true;
+    
+    const bodyData = {
+        name: name,
+        phone: document.getElementById('empPhone').value || '',
+        position: document.getElementById('empPosition').value || '',
+        employee_type: document.getElementById('empType').value || 'sales',
+        salary: parseFloat(document.getElementById('empSalary').value) || 0,
+        hire_date: document.getElementById('empHireDate').value || null,
+        create_user_account: createUser
+    };
+    
+    console.log('Sending data:', bodyData);
+    
+    const res = await fetchAPI('/api/employees', {
+        method: 'POST',
+        body: JSON.stringify(bodyData)
+    });
+    
+    const data = await res.json();
+    console.log('Response:', data);
+    
+    if (res.ok) {
+        if (data.userAccount) {
+            alert(`✅ ሰራተኛ ተፈጥሯል!\n\n👤 የተጠቃሚ ስም: ${data.userAccount.username}\n🔑 ጊዜያዊ ይለፍ ቃል: ${data.userAccount.tempPassword}\n\n⚠️ ሰራተኛው በመጀመሪያ ጊዜ ገብቶ ይለፍ ቃሉን መቀየር አለበት!`);
+        } else {
+            alert('✅ ሰራተኛ ተፈጥሯል!');
         }
+        loadEmployees();
+        // Clear form
+        document.getElementById('empName').value = '';
+        document.getElementById('empPhone').value = '';
+        document.getElementById('empPosition').value = '';
+        document.getElementById('empSalary').value = '';
+        document.getElementById('empHireDate').value = '';
+    } else {
+        alert('❌ ስህተት: ' + (data.error || 'እባክዎ እንደገና ይሞክሩ'));
+    }
+}
         
         function getTypeCode(type) {
             const codes = { 'sales':'SAL', 'admin':'ADM', 'manager':'MGR', 'warehouse':'WRH' };
