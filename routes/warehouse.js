@@ -25,16 +25,11 @@ router.post('/add-stock', authenticate, async (req, res) => {
   }
   
   const db = getDb();
-  
-  // Update product stock
   await db.run('UPDATE products SET current_stock = current_stock + ? WHERE id = ?', [quantity, product_id]);
-  
-  // Record transaction
   await db.run(
     'INSERT INTO warehouse_transactions (product_id, transaction_type, quantity, notes) VALUES (?, ?, ?, ?)',
     [product_id, 'purchase_in', quantity, notes || 'ግዢ']
   );
-  
   res.json({ success: true });
 });
 
@@ -47,15 +42,13 @@ router.post('/adjust', authenticate, async (req, res) => {
   
   const db = getDb();
   const product = await db.get('SELECT current_stock FROM products WHERE id = ?', product_id);
-  const newStock = product.current_stock + quantity;
+  const newStock = quantity;
   
   await db.run('UPDATE products SET current_stock = ? WHERE id = ?', [newStock, product_id]);
-  
   await db.run(
     'INSERT INTO warehouse_transactions (product_id, transaction_type, quantity, notes) VALUES (?, ?, ?, ?)',
-    [product_id, quantity > 0 ? 'adjust_in' : 'adjust_out', Math.abs(quantity), reason || 'ማስተካከያ']
+    [product_id, 'adjust', Math.abs(quantity), reason || 'ማስተካከያ']
   );
-  
   res.json({ success: true });
 });
 
@@ -69,6 +62,22 @@ router.get('/summary', authenticate, async (req, res) => {
     ORDER BY current_stock ASC
   `);
   res.json(summary);
+});
+
+// Remove stock (for damage/return)
+router.post('/remove-stock', authenticate, async (req, res) => {
+  const { product_id, quantity, reason } = req.body;
+  if (!product_id || !quantity) {
+    return res.status(400).json({ error: 'ምርት እና ብዛት ያስፈልጋል' });
+  }
+  
+  const db = getDb();
+  await db.run('UPDATE products SET current_stock = current_stock - ? WHERE id = ?', [quantity, product_id]);
+  await db.run(
+    'INSERT INTO warehouse_transactions (product_id, transaction_type, quantity, notes) VALUES (?, ?, ?, ?)',
+    [product_id, 'remove_out', quantity, reason || 'ተጎድቷል/ተመልሷል']
+  );
+  res.json({ success: true });
 });
 
 module.exports = router;
