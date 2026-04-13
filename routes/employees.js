@@ -74,8 +74,8 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     const employeeId = result.lastID;
     let userAccount = null;
     
-    // Create user account if requested
-    if (create_user_account === true || create_user_account === 'true') {
+    // Create user account if requested (default is true)
+    if (create_user_account !== false && create_user_account !== 'false') {
       const username = await generateUsername(name, employee_type || 'sales', db);
       const tempPassword = 'Temp@' + Math.floor(1000 + Math.random() * 9000);
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
