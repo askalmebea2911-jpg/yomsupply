@@ -1,18 +1,18 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { getDb } = require('../db/pool');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Get current user profile
 router.get('/me', authenticate, async (req, res) => {
   const db = getDb();
-  const user = await db.get('SELECT id, username, full_name, role FROM users WHERE id = ?', req.user.id);
+  const user = await db.get('SELECT id, username, full_name, role, employee_type FROM users WHERE id = ?', req.user.id);
   res.json(user);
 });
 
-// Change password
+// Change password (for any user)
 router.post('/change-password', authenticate, async (req, res) => {
   const { current_password, new_password } = req.body;
   
@@ -38,12 +38,8 @@ router.post('/change-password', authenticate, async (req, res) => {
   res.json({ success: true, message: 'ይለፍ ቃል ተቀይሯል' });
 });
 
-// Reset password for employee (admin only)
-router.post('/reset-password/:id', authenticate, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
-  }
-  
+// Admin force reset any user password
+router.post('/admin-reset/:id', authenticate, authorize('admin'), async (req, res) => {
   const { new_password } = req.body;
   const userId = req.params.id;
   
@@ -59,11 +55,7 @@ router.post('/reset-password/:id', authenticate, async (req, res) => {
 });
 
 // Deactivate user (admin only)
-router.put('/deactivate/:id', authenticate, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
-  }
-  
+router.put('/deactivate/:id', authenticate, authorize('admin'), async (req, res) => {
   const userId = req.params.id;
   if (userId == req.user.id) {
     return res.status(400).json({ error: 'ራስዎን ማሰናከል አይችሉም' });
@@ -72,17 +64,25 @@ router.put('/deactivate/:id', authenticate, async (req, res) => {
   const db = getDb();
   await db.run('UPDATE users SET is_active = 0 WHERE id = ?', userId);
   
+  // Also deactivate employee if linked
+  const user = await db.get('SELECT employee_id FROM users WHERE id = ?', userId);
+  if (user && user.employee_id) {
+    await db.run('UPDATE employees SET is_active = 0 WHERE id = ?', user.employee_id);
+  }
+  
   res.json({ success: true, message: 'ተጠቃሚ ተሰናክሏል' });
 });
 
 // Activate user (admin only)
-router.put('/activate/:id', authenticate, async (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'ይህን እርምጃ ማድረግ አይችሉም' });
-  }
-  
+router.put('/activate/:id', authenticate, authorize('admin'), async (req, res) => {
   const db = getDb();
   await db.run('UPDATE users SET is_active = 1 WHERE id = ?', req.params.id);
+  
+  // Also activate employee if linked
+  const user = await db.get('SELECT employee_id FROM users WHERE id = ?', req.params.id);
+  if (user && user.employee_id) {
+    await db.run('UPDATE employees SET is_active = 1 WHERE id = ?', user.employee_id);
+  }
   
   res.json({ success: true, message: 'ተጠቃሚ ንቁ ተደርጓል' });
 });
