@@ -298,25 +298,12 @@
             margin-bottom: 15px;
         }
         
-        .success-msg {
-            background: #48bb78;
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-        }
-        
         .preview-box {
             background: #f0f0f0;
             padding: 10px;
             border-radius: 5px;
             margin-top: 10px;
             text-align: center;
-        }
-        
-        .preview-box label {
-            font-size: 12px;
-            color: #666;
         }
         
         .preview-box span {
@@ -404,13 +391,29 @@
     </div>
     
     <script>
+        // ==================== FETCH HELPER WITH CREDENTIALS ====================
+        async function fetchAPI(url, options = {}) {
+            const defaultOptions = {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            };
+            const mergedOptions = { ...defaultOptions, ...options };
+            if (options.body) {
+                mergedOptions.body = options.body;
+            }
+            const response = await fetch(url, mergedOptions);
+            return response;
+        }
+        
         let currentUser = null;
         let currentPage = 'dashboard';
         
         // ==================== AUTHENTICATION ====================
         async function checkAuth() {
             try {
-                const res = await fetch('/api/auth/me');
+                const res = await fetchAPI('/api/auth/me');
                 if (res.ok) {
                     const user = await res.json();
                     currentUser = user;
@@ -421,7 +424,9 @@
                     document.getElementById('dashboard').style.display = 'block';
                     showPage('dashboard');
                 }
-            } catch(e) {}
+            } catch(e) {
+                console.log('Not logged in');
+            }
         }
         
         async function login() {
@@ -434,9 +439,8 @@
             }
             
             try {
-                const res = await fetch('/api/auth/login', {
+                const res = await fetchAPI('/api/auth/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
                 
@@ -459,7 +463,7 @@
         }
         
         async function logout() {
-            await fetch('/api/auth/logout', { method: 'POST' });
+            await fetchAPI('/api/auth/logout', { method: 'POST' });
             location.reload();
         }
         
@@ -497,9 +501,8 @@
             }
             
             try {
-                const res = await fetch('/api/profile/change-password', {
+                const res = await fetchAPI('/api/profile/change-password', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ current_password: current, new_password: newPwd })
                 });
                 
@@ -538,7 +541,7 @@
         
         // ==================== DASHBOARD ====================
         async function loadDashboard() {
-            const res = await fetch('/api/dashboard');
+            const res = await fetchAPI('/api/dashboard');
             const data = await res.json();
             
             document.getElementById('content').innerHTML = `
@@ -560,7 +563,7 @@
         
         // ==================== CUSTOMERS ====================
         async function loadCustomers() {
-            const res = await fetch('/api/customers');
+            const res = await fetchAPI('/api/customers');
             const customers = await res.json();
             
             document.getElementById('content').innerHTML = `
@@ -580,9 +583,8 @@
         async function addCustomer() {
             const name = document.getElementById('custName').value;
             if (!name) return alert('እባክዎ ስም ያስገቡ');
-            await fetch('/api/customers', {
+            await fetchAPI('/api/customers', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, phone: document.getElementById('custPhone').value, address: document.getElementById('custAddress').value, credit_limit: document.getElementById('custCredit').value || 0 })
             });
             loadCustomers();
@@ -590,14 +592,14 @@
         
         async function deleteCustomer(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/customers/${id}`, { method: 'DELETE' });
                 loadCustomers();
             }
         }
         
         // ==================== PRODUCTS ====================
         async function loadProducts() {
-            const res = await fetch('/api/products');
+            const res = await fetchAPI('/api/products');
             const products = await res.json();
             
             document.getElementById('content').innerHTML = `
@@ -609,7 +611,7 @@
                     <button class="btn-primary" onclick="addProduct()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">📦 የምርቶች ዝርዝር</h3>
-                <table><thead><tr><th>ስም</th><th>ኮድ</th><th>ዋጋ</th><th>ክምችት</th><th>ዝቅተኛ</th><th>ድርጊት</th></tr></thead>
+                <tr><thead><tr><th>ስም</th><th>ኮድ</th><th>ዋጋ</th><th>ክምችት</th><th>ዝቅተኛ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${products.map(p => `<tr><td>${p.name}</td><td>${p.code || '-'}</td><td>${p.selling_price} ብር</td><td style="${p.current_stock <= p.min_stock ? 'color:red' : ''}">${p.current_stock}</td><td>${p.min_stock}</td><td><button class="btn-danger" onclick="deleteProduct(${p.id})">ሰርዝ</button></td></tr>`).join('')}</tbody></table></div>
             `;
         }
@@ -618,9 +620,8 @@
             const name = document.getElementById('prodName').value;
             const price = document.getElementById('prodPrice').value;
             if (!name || !price) return alert('ስም እና ዋጋ ያስፈልጋል');
-            await fetch('/api/products', {
+            await fetchAPI('/api/products', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, code: document.getElementById('prodCode').value, selling_price: price, min_stock: document.getElementById('prodMinStock').value || 0 })
             });
             loadProducts();
@@ -628,16 +629,16 @@
         
         async function deleteProduct(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/products/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/products/${id}`, { method: 'DELETE' });
                 loadProducts();
             }
         }
         
         // ==================== SALES ====================
         async function loadSales() {
-            const sales = await fetch('/api/sales').then(r=>r.json());
-            const products = await fetch('/api/products').then(r=>r.json());
-            const customers = await fetch('/api/customers').then(r=>r.json());
+            const sales = await fetchAPI('/api/sales').then(r=>r.json());
+            const products = await fetchAPI('/api/products').then(r=>r.json());
+            const customers = await fetchAPI('/api/customers').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ሽያጭ</h3>
@@ -649,7 +650,7 @@
                     <button class="btn-primary" onclick="createSale()">ሽያጩን አስመዝግብ</button>
                 </div>
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">💰 የሽያጭ ዝርዝር</h3>
-                <table><thead><tr><th>ተራ ቁጥር</th><th>ደንበኛ</th><th>ጠቅላላ</th><th>የተከፈለ</th><th>ቀሪ</th><th>ሁኔታ</th></tr></thead>
+                </table><thead><tr><th>ተራ ቁጥር</th><th>ደንበኛ</th><th>ጠቅላላ</th><th>የተከፈለ</th><th>ቀሪ</th><th>ሁኔታ</th></tr></thead>
                 <tbody>${sales.map(s => `<tr><td>${s.invoice_number}</td><td>${s.customer_name || 'የገንዘብ ግዢ'}</td><td>${(s.total || 0).toLocaleString()} ብር</td><td>${(s.amount_paid || 0).toLocaleString()} ብር</td><td>${(s.remaining || 0).toLocaleString()} ብር</td><td>${s.payment_status === 'paid' ? 'ተከፍሏል' : (s.payment_status === 'partial' ? 'ከፊል' : 'አልተከፈለም')}</td></tr>`).join('')}</tbody></table></div>
             `;
         }
@@ -678,20 +679,19 @@
             }
             if (items.length === 0) return alert('ቢያንስ አንድ ምርት ይምረጡ');
             
-            const res = await fetch('/api/sales', {
+            const res = await fetchAPI('/api/sales', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ customer_id: document.getElementById('saleCustomer').value || null, items, discount: parseFloat(document.getElementById('saleDiscount').value) || 0, amount_paid: parseFloat(document.getElementById('salePaid').value) || 0 })
             });
             if (res.ok) { alert('ሽያጩ ተመዝግቧል'); loadSales(); }
             else { const err = await res.json(); alert(err.error); }
         }
         
-        // ==================== EMPLOYEES (with auto username) ====================
+        // ==================== EMPLOYEES ====================
         async function loadEmployees() {
-            const res = await fetch('/api/employees');
+            const res = await fetchAPI('/api/employees');
             const employees = await res.json();
-            const employeeTypes = await fetch('/api/employees/types/list').then(r=>r.json());
+            const employeeTypes = await fetchAPI('/api/employees/types/list').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ሰራተኛ</h3>
@@ -757,9 +757,8 @@
             const name = document.getElementById('empName').value;
             if (!name) return alert('ስም ያስፈልጋል');
             
-            const res = await fetch('/api/employees', {
+            const res = await fetchAPI('/api/employees', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: name,
                     phone: document.getElementById('empPhone').value,
@@ -786,28 +785,28 @@
         
         async function deleteEmployee(id) {
             if (confirm('እርግጠኛ ነዎት? ይህ ሰራተኛ እና የተጠቃሚ አካውንቱ ይሰረዛሉ!')) {
-                await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/employees/${id}`, { method: 'DELETE' });
                 loadEmployees();
             }
         }
         
         async function resetEmployeePassword(id) {
             if (!confirm('የዚህን ሰራተኛ ይለፍ ቃል ዳግም ማስጀመር ይፈልጋሉ?')) return;
-            const res = await fetch(`/api/employees/${id}/reset-password`, { method: 'POST' });
+            const res = await fetchAPI(`/api/employees/${id}/reset-password`, { method: 'POST' });
             const data = await res.json();
             if (res.ok) {
                 alert(`🔄 ይለፍ ቃል በዳግም ተጀምሯል!\n\n🔑 አዲስ ጊዜያዊ ይለፍ ቃል: ${data.tempPassword}\n\n⚠️ ሰራተኛው በዚህ ጊዜያዊ ይለፍ ቃል ገብቶ መቀየር አለበት!`);
             } else { alert(data.error); }
         }
         
-        // ==================== USERS (Admin only) ====================
+        // ==================== USERS ====================
         async function loadUsers() {
             if (currentUser.role !== 'admin') {
                 document.getElementById('content').innerHTML = '<div class="form-container">⛔ ይህን ገጽ ለማየት ፈቃድ የለዎትም</div>';
                 return;
             }
-            const users = await fetch('/api/users').then(r=>r.json());
-            const availableEmps = await fetch('/api/users/available-employees').then(r=>r.json());
+            const users = await fetchAPI('/api/users').then(r=>r.json());
+            const availableEmps = await fetchAPI('/api/users/available-employees').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ተጠቃሚ</h3>
@@ -816,7 +815,7 @@
                     <div class="form-group"><label>ይለፍ ቃል</label><input type="password" id="userPassword" placeholder="ይለፍ ቃል"></div>
                     <div class="form-group"><label>ሚና</label><select id="userRole"><option value="staff">ሰራተኛ</option><option value="admin">አስተዳዳሪ</option></select></div>
                     <div class="form-group"><label>የሰራተኛ ምድብ</label><select id="userEmpType"><option value="sales">የሽያጭ</option><option value="manager">ማኔጅር</option><option value="warehouse">መጋዘን</option></select></div>
-                    <div class="form-group"><label>ከሰራተኛ ጋር አገናኝ (አማራጭ)</label><select id="userEmployee"><option value="">ምንም</option>${availableEmps.map(e => `<option value="${e.id}">${e.name} (${e.position})</option>`).join('')}</select></div>
+                    <div class="form-group"><label>ከሰራተኛ ጋር አገናኝ</label><select id="userEmployee"><option value="">ምንም</option>${availableEmps.map(e => `<option value="${e.id}">${e.name} (${e.position})</option>`).join('')}</select></div>
                     <button class="btn-primary" onclick="addUser()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">👤 የተጠቃሚዎች ዝርዝር</h3>
@@ -837,9 +836,8 @@
             const full_name = document.getElementById('userFullName').value;
             if (!username || !password || !full_name) return alert('ሁሉም መረጃዎች ያስፈልጋሉ');
             
-            await fetch('/api/users', {
+            await fetchAPI('/api/users', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     username, password, full_name, 
                     role: document.getElementById('userRole').value,
@@ -852,24 +850,24 @@
         
         async function deleteUser(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/users/${id}`, { method: 'DELETE' });
                 loadUsers();
             }
         }
         
         async function deactivateUser(id) {
-            await fetch(`/api/profile/deactivate/${id}`, { method: 'PUT' });
+            await fetchAPI(`/api/profile/deactivate/${id}`, { method: 'PUT' });
             loadUsers();
         }
         
         async function activateUser(id) {
-            await fetch(`/api/profile/activate/${id}`, { method: 'PUT' });
+            await fetchAPI(`/api/profile/activate/${id}`, { method: 'PUT' });
             loadUsers();
         }
         
         // ==================== VEHICLES ====================
         async function loadVehicles() {
-            const res = await fetch('/api/vehicles');
+            const res = await fetchAPI('/api/vehicles');
             const vehicles = await res.json();
             
             document.getElementById('content').innerHTML = `
@@ -881,7 +879,7 @@
                     <button class="btn-primary" onclick="addVehicle()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">🚗 የተሽከርካሪዎች ዝርዝር</h3>
-                <table><thead><tr><th>ታርጋ</th><th>ሞዴል</th><th>ሹፌር</th><th>ስልክ</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
+                <table><thead><tr><th>ታርጋ</th><th>ሞዴል</th><th>ሹፌር</th><th>ስልክ</th><th>ሁኔታ</th><th>ድርጊት</th><tr></thead>
                 <tbody>${vehicles.map(v => `<tr>
                     <td>${v.plate_number}</td><td>${v.model || '-'}</td><td>${v.driver_name || '-'}</td>
                     <td>${v.driver_phone || '-'}</td><td>${v.status}</td>
@@ -893,9 +891,8 @@
         async function addVehicle() {
             const plate = document.getElementById('vehPlate').value;
             if (!plate) return alert('ታርጋ ያስፈልጋል');
-            await fetch('/api/vehicles', {
+            await fetchAPI('/api/vehicles', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     plate_number: plate, 
                     model: document.getElementById('vehModel').value,
@@ -908,14 +905,14 @@
         
         async function deleteVehicle(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/vehicles/${id}`, { method: 'DELETE' });
                 loadVehicles();
             }
         }
         
         // ==================== EXPENSES ====================
         async function loadExpenses() {
-            const res = await fetch('/api/expenses');
+            const res = await fetchAPI('/api/expenses');
             const expenses = await res.json();
             
             document.getElementById('content').innerHTML = `
@@ -926,11 +923,10 @@
                     <button class="btn-primary" onclick="addExpense()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">💸 የወጪ ዝርዝር</h3>
-                <td><thead><tr><th>ምድብ</th><th>ገንዘብ</th><th>ማብራሪያ</th><th>ቀን</th><th>ድርጊት</th></tr></thead>
+                <table><thead><tr><th>ምድብ</th><th>ገንዘብ</th><th>ማብራሪያ</th><th>ቀን</th><th>ድርጊት</th></tr></thead>
                 <tbody>${expenses.map(e => `<tr>
                     <td>${e.category === 'fuel' ? '⛽ ነዳጅ' : (e.category === 'maintenance' ? '🔧 ጥገና' : (e.category === 'salary' ? '💰 ደሞዝ' : '📋 ሌላ'))}</td>
-                    <td>${e.amount} ብር</td><td>${e.description || '-'}</td>
-                    <td>${e.expense_date}</td>
+                    <td>${e.amount} ብር</td><td>${e.description || '-'}</td><td>${e.expense_date}</td>
                     <td><button class="btn-danger" onclick="deleteExpense(${e.id})">ሰርዝ</button></td>
                 </tr>`).join('')}</tbody></table></div>
             `;
@@ -939,9 +935,8 @@
         async function addExpense() {
             const amount = document.getElementById('expAmount').value;
             if (!amount) return alert('ገንዘብ ያስፈልጋል');
-            await fetch('/api/expenses', {
+            await fetchAPI('/api/expenses', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ category: document.getElementById('expCategory').value, amount: parseFloat(amount), description: document.getElementById('expDesc').value })
             });
             loadExpenses();
@@ -949,16 +944,16 @@
         
         async function deleteExpense(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/expenses/${id}`, { method: 'DELETE' });
                 loadExpenses();
             }
         }
         
         // ==================== PREORDERS ====================
         async function loadPreorders() {
-            const preorders = await fetch('/api/preorders').then(r=>r.json());
-            const products = await fetch('/api/products').then(r=>r.json());
-            const customers = await fetch('/api/customers').then(r=>r.json());
+            const preorders = await fetchAPI('/api/preorders').then(r=>r.json());
+            const products = await fetchAPI('/api/products').then(r=>r.json());
+            const customers = await fetchAPI('/api/customers').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ቅድመ ትዕዛዝ</h3>
@@ -971,12 +966,11 @@
                 <div class="data-table"><h3 style="padding:15px 0 0 15px">📋 የቅድመ ትዕዛዝ ዝርዝር</h3>
                 <table><thead><tr><th>ደንበኛ</th><th>ምርት</th><th>ብዛት</th><th>የሚጠበቅበት</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${preorders.map(p => `<tr>
-                    <td>${p.customer_name || '-'}</td><td>${p.product_name || '-'}</td>
-                    <td>${p.quantity}</td><td>${p.expected_date || '-'}</td>
-                    <td>${p.status === 'pending' ? '⏳ በመጠባበቅ ላይ' : '✅ ተጠናቅቋል'}</td>
+                    <td>${p.customer_name || '-'} </td><td>${p.product_name || '-'}</td><td>${p.quantity}</td>
+                    <td>${p.expected_date || '-'}</td><td>${p.status === 'pending' ? '⏳ በመጠባበቅ ላይ' : '✅ ተጠናቅቋል'}</td>
                     <td><button class="btn-danger" onclick="deletePreorder(${p.id})">ሰርዝ</button> 
                         ${p.status === 'pending' ? `<button class="btn-edit" onclick="completePreorder(${p.id})">አጠናቅቅ</button>` : ''}
-                      </td>
+                       </td>
                 </tr>`).join('')}</tbody></table></div>
             `;
         }
@@ -985,9 +979,8 @@
             const productId = document.getElementById('preProduct').value;
             const quantity = document.getElementById('preQuantity').value;
             if (!productId || !quantity) return alert('ምርት እና ብዛት ያስፈልጋል');
-            await fetch('/api/preorders', {
+            await fetchAPI('/api/preorders', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ customer_id: document.getElementById('preCustomer').value || null, product_id: parseInt(productId), quantity: parseFloat(quantity), expected_date: document.getElementById('preDate').value })
             });
             loadPreorders();
@@ -995,15 +988,14 @@
         
         async function deletePreorder(id) {
             if (confirm('እርግጠኛ ነዎት?')) {
-                await fetch(`/api/preorders/${id}`, { method: 'DELETE' });
+                await fetchAPI(`/api/preorders/${id}`, { method: 'DELETE' });
                 loadPreorders();
             }
         }
         
         async function completePreorder(id) {
-            await fetch(`/api/preorders/${id}/status`, {
+            await fetchAPI(`/api/preorders/${id}/status`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'completed' })
             });
             loadPreorders();
@@ -1011,8 +1003,8 @@
         
         // ==================== WAREHOUSE ====================
         async function loadWarehouse() {
-            const summary = await fetch('/api/warehouse/summary').then(r=>r.json());
-            const products = await fetch('/api/products').then(r=>r.json());
+            const summary = await fetchAPI('/api/warehouse/summary').then(r=>r.json());
+            const products = await fetchAPI('/api/products').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>📦 ክምችት ጨምር</h3>
@@ -1037,9 +1029,8 @@
             const productId = document.getElementById('stockProduct').value;
             const quantity = document.getElementById('stockQuantity').value;
             if (!productId || !quantity || quantity <= 0) return alert('ትክክለኛ ብዛት ያስገቡ');
-            await fetch('/api/warehouse/add-stock', {
+            await fetchAPI('/api/warehouse/add-stock', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: parseInt(productId), quantity: parseFloat(quantity), notes: document.getElementById('stockNote').value || 'ክምችት መጨመር' })
             });
             alert('ክምችት ተጨምሯል');
@@ -1054,9 +1045,8 @@
         }
         
         async function adjustStock(productId, newStock) {
-            await fetch('/api/warehouse/adjust', {
+            await fetchAPI('/api/warehouse/adjust', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ product_id: productId, quantity: newStock, reason: 'በእጅ ማስተካከያ' })
             });
             alert('ክምችት ተስተካክሏል');
@@ -1065,8 +1055,8 @@
         
         // ==================== REPORTS ====================
         async function loadReports() {
-            const salesReport = await fetch('/api/reports/sales').then(r=>r.json());
-            const profitReport = await fetch('/api/reports/profit').then(r=>r.json());
+            const salesReport = await fetchAPI('/api/reports/sales').then(r=>r.json());
+            const profitReport = await fetchAPI('/api/reports/profit').then(r=>r.json());
             
             document.getElementById('content').innerHTML = `
                 <div class="stats-grid">
