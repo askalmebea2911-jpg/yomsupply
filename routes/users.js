@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/', authenticate, authorize('admin'), async (req, res) => {
   const db = getDb();
   const users = await db.all(`
-    SELECT u.id, u.username, u.full_name, u.role, u.is_active, u.created_at,
+    SELECT u.id, u.username, u.full_name, u.role, u.employee_type, u.is_active, u.created_at,
            e.id as employee_id, e.name as employee_name, e.position
     FROM users u
     LEFT JOIN employees e ON u.employee_id = e.id
@@ -18,9 +18,9 @@ router.get('/', authenticate, authorize('admin'), async (req, res) => {
   res.json(users);
 });
 
-// Create user (with optional employee link)
+// Create user
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
-  const { username, password, full_name, role, employee_id } = req.body;
+  const { username, password, full_name, role, employee_type, employee_id } = req.body;
   
   if (!username || !password || !full_name) {
     return res.status(400).json({ error: 'ሁሉም መረጃዎች ያስፈልጋሉ' });
@@ -34,8 +34,9 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
   
   const hashedPassword = await bcrypt.hash(password, 10);
   const result = await db.run(
-    'INSERT INTO users (username, password, full_name, role, employee_id) VALUES (?, ?, ?, ?, ?)',
-    [username, hashedPassword, full_name, role || 'staff', employee_id || null]
+    `INSERT INTO users (username, password, full_name, role, employee_type, employee_id) 
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [username, hashedPassword, full_name, role || 'staff', employee_type || 'sales', employee_id || null]
   );
   
   // If employee_id is provided, update employee table with user_id
@@ -43,25 +44,25 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     await db.run('UPDATE employees SET user_id = ? WHERE id = ?', [result.lastID, employee_id]);
   }
   
-  const newUser = await db.get('SELECT id, username, full_name, role FROM users WHERE id = ?', result.lastID);
+  const newUser = await db.get('SELECT id, username, full_name, role, employee_type FROM users WHERE id = ?', result.lastID);
   res.status(201).json(newUser);
 });
 
 // Update user
 router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
-  const { full_name, role, is_active, password } = req.body;
+  const { full_name, role, employee_type, is_active, password } = req.body;
   const db = getDb();
   
   if (password) {
     const hashedPassword = await bcrypt.hash(password, 10);
     await db.run(
-      'UPDATE users SET full_name = ?, role = ?, is_active = ?, password = ? WHERE id = ?',
-      [full_name, role, is_active, hashedPassword, req.params.id]
+      `UPDATE users SET full_name = ?, role = ?, employee_type = ?, is_active = ?, password = ? WHERE id = ?`,
+      [full_name, role, employee_type, is_active, hashedPassword, req.params.id]
     );
   } else {
     await db.run(
-      'UPDATE users SET full_name = ?, role = ?, is_active = ? WHERE id = ?',
-      [full_name, role, is_active, req.params.id]
+      `UPDATE users SET full_name = ?, role = ?, employee_type = ?, is_active = ? WHERE id = ?`,
+      [full_name, role, employee_type, is_active, req.params.id]
     );
   }
   
@@ -75,7 +76,6 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
   }
   
   const db = getDb();
-  // Remove link from employee
   await db.run('UPDATE employees SET user_id = NULL WHERE user_id = ?', req.params.id);
   await db.run('DELETE FROM users WHERE id = ?', req.params.id);
   res.json({ success: true });
@@ -85,7 +85,7 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
 router.get('/available-employees', authenticate, authorize('admin'), async (req, res) => {
   const db = getDb();
   const employees = await db.all(`
-    SELECT id, name, position FROM employees 
+    SELECT id, name, position, employee_type FROM employees 
     WHERE user_id IS NULL AND is_active = 1
   `);
   res.json(employees);
