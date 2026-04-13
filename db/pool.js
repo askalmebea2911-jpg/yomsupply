@@ -8,13 +8,16 @@ let db;
 async function initDatabase() {
   const dbPath = path.join(__dirname, '..', 'yom_sales.db');
   
+  console.log('ውሂብ ጎታ መንገድ:', dbPath);
+  
   db = await open({
     filename: dbPath,
     driver: sqlite3.Database
   });
 
   // Create tables
-  const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+  const schemaPath = path.join(__dirname, 'schema.sql');
+  const schema = fs.readFileSync(schemaPath, 'utf8');
   await db.exec(schema);
   
   console.log('የውሂብ ጎታ ተጀምሯል');
