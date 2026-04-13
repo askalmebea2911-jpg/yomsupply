@@ -14,13 +14,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session - ማስጠንቀቂያውን ለማስወገድ የተሻሻለ
+// Session
 app.use(session({
   secret: process.env.SESSION_SECRET || 'yom_sales_secret_key_2024',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false,  // ለRender ከሆነ true ያስፈልጋል
+    secure: false,
     maxAge: 24 * 60 * 60 * 1000 
   }
 }));
@@ -51,6 +51,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/tracking', require('./routes/tracking'));
 app.use('/api/telegram', require('./routes/telegram'));
+app.use('/api/profile', require('./routes/profile'));
 
 // Error handler
 app.use(require('./middleware/errorHandler'));
