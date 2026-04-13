@@ -14,19 +14,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Session
+// Session - ማስጠንቀቂያውን ለማስወገድ የተሻሻለ
 app.use(session({
   secret: process.env.SESSION_SECRET || 'yom_sales_secret_key_2024',
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 }
+  cookie: { 
+    secure: false,  // ለRender ከሆነ true ያስፈልጋል
+    maxAge: 24 * 60 * 60 * 1000 
+  }
 }));
 
 // Uploads folder
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 
-// Database - በዚህ መንገድ አስጀምር
+// Database
 const { initDatabase } = require('./db/pool');
 initDatabase().catch(err => {
   console.error('የውሂብ ጎታ ስህተት:', err);
