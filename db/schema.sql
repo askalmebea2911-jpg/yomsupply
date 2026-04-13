@@ -5,11 +5,10 @@ CREATE TABLE IF NOT EXISTS users (
   password TEXT NOT NULL,
   full_name TEXT NOT NULL,
   role TEXT DEFAULT 'staff',
-  employee_type TEXT DEFAULT 'sales',  -- sales, admin, manager, warehouse
+  employee_type TEXT DEFAULT 'sales',
   is_active INTEGER DEFAULT 1,
   employee_id INTEGER,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (employee_id) REFERENCES employees(id)
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Employees table
@@ -18,12 +17,11 @@ CREATE TABLE IF NOT EXISTS employees (
   name TEXT NOT NULL,
   phone TEXT,
   position TEXT,
-  employee_type TEXT DEFAULT 'sales',  -- sales, admin, manager, warehouse
+  employee_type TEXT DEFAULT 'sales',
   salary REAL,
   hire_date DATE,
   is_active INTEGER DEFAULT 1,
-  user_id INTEGER,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  user_id INTEGER
 );
 
 -- Customers table
@@ -136,7 +134,7 @@ CREATE TABLE IF NOT EXISTS warehouse_transactions (
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Tracking
+-- Tracking table
 CREATE TABLE IF NOT EXISTS tracking (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   vehicle_id INTEGER,
