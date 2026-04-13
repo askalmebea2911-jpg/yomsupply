@@ -12,7 +12,7 @@ router.get('/me', authenticate, async (req, res) => {
   res.json(user);
 });
 
-// Change password (for any user)
+// Change password
 router.post('/change-password', authenticate, async (req, res) => {
   const { current_password, new_password } = req.body;
   
@@ -26,6 +26,10 @@ router.post('/change-password', authenticate, async (req, res) => {
   
   const db = getDb();
   const user = await db.get('SELECT * FROM users WHERE id = ?', req.user.id);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'ተጠቃሚ አልተገኘም' });
+  }
   
   const isValid = await bcrypt.compare(current_password, user.password);
   if (!isValid) {
@@ -54,7 +58,7 @@ router.post('/admin-reset/:id', authenticate, authorize('admin'), async (req, re
   res.json({ success: true, message: 'ይለፍ ቃል ተስተካክሏል' });
 });
 
-// Deactivate user (admin only)
+// Deactivate user
 router.put('/deactivate/:id', authenticate, authorize('admin'), async (req, res) => {
   const userId = req.params.id;
   if (userId == req.user.id) {
@@ -64,7 +68,6 @@ router.put('/deactivate/:id', authenticate, authorize('admin'), async (req, res)
   const db = getDb();
   await db.run('UPDATE users SET is_active = 0 WHERE id = ?', userId);
   
-  // Also deactivate employee if linked
   const user = await db.get('SELECT employee_id FROM users WHERE id = ?', userId);
   if (user && user.employee_id) {
     await db.run('UPDATE employees SET is_active = 0 WHERE id = ?', user.employee_id);
@@ -73,12 +76,11 @@ router.put('/deactivate/:id', authenticate, authorize('admin'), async (req, res)
   res.json({ success: true, message: 'ተጠቃሚ ተሰናክሏል' });
 });
 
-// Activate user (admin only)
+// Activate user
 router.put('/activate/:id', authenticate, authorize('admin'), async (req, res) => {
   const db = getDb();
   await db.run('UPDATE users SET is_active = 1 WHERE id = ?', req.params.id);
   
-  // Also activate employee if linked
   const user = await db.get('SELECT employee_id FROM users WHERE id = ?', req.params.id);
   if (user && user.employee_id) {
     await db.run('UPDATE employees SET is_active = 1 WHERE id = ?', user.employee_id);
