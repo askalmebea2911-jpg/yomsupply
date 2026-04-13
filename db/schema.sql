@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS preorders (
   FOREIGN KEY (product_id) REFERENCES products(id)
 );
 
--- Warehouse transactions
+-- Warehouse transactions table
 CREATE TABLE IF NOT EXISTS warehouse_transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL,
