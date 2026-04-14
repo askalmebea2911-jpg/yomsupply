@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 
 function getEmployeeTypeCode(type) {
-  const codes = { 'sales': 'SAL', 'admin': 'ADM', 'manager': 'MGR', 'warehouse': 'WRH', 'accountant': 'ACC' };
+  const codes = { 'sales': 'SAL', 'admin': 'ADM', 'accountant': 'ACC', 'warehouse': 'WRH' };
   return codes[type] || 'EMP';
 }
 
@@ -34,7 +34,6 @@ router.get('/', authenticate, async (req, res) => {
     `);
     res.json(employees);
   } catch (error) {
-    console.error('Employees error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -54,8 +53,6 @@ router.get('/:id', authenticate, async (req, res) => {
 // Create employee
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
   try {
-    console.log('Received employee data:', req.body);
-    
     const { name, phone, position, employee_type, salary, hire_date, create_user_account } = req.body;
     
     if (!name) {
@@ -64,7 +61,6 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     
     const db = getDb();
     
-    // Insert employee
     const result = await db.run(
       `INSERT INTO employees (name, phone, position, employee_type, salary, hire_date, is_active) 
        VALUES (?, ?, ?, ?, ?, ?, 1)`,
@@ -74,17 +70,14 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     const employeeId = result.lastID;
     let userAccount = null;
     
-    // Create user account if requested
     if (create_user_account !== false && create_user_account !== 'false') {
       const username = await generateUsername(name, employee_type || 'sales', db);
       const tempPassword = 'Temp@' + Math.floor(1000 + Math.random() * 9000);
       const hashedPassword = await bcrypt.hash(tempPassword, 10);
       
-      // Set role based on employee type
       let role = 'staff';
       if (employee_type === 'admin') role = 'admin';
       else if (employee_type === 'accountant') role = 'accountant';
-      else if (employee_type === 'manager') role = 'manager';
       else if (employee_type === 'warehouse') role = 'warehouse';
       else if (employee_type === 'sales') role = 'sales';
       
@@ -100,19 +93,11 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
       }
       
       userAccount = { username, tempPassword };
-      console.log('Created user account:', userAccount);
     }
     
     const newEmployee = await db.get('SELECT * FROM employees WHERE id = ?', employeeId);
-    
-    res.status(201).json({ 
-      success: true, 
-      employee: newEmployee, 
-      userAccount: userAccount 
-    });
-    
+    res.status(201).json({ success: true, employee: newEmployee, userAccount });
   } catch (error) {
-    console.error('Create employee error:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -133,7 +118,6 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
       let role = 'staff';
       if (employee_type === 'admin') role = 'admin';
       else if (employee_type === 'accountant') role = 'accountant';
-      else if (employee_type === 'manager') role = 'manager';
       else if (employee_type === 'warehouse') role = 'warehouse';
       else if (employee_type === 'sales') role = 'sales';
       
@@ -171,36 +155,7 @@ router.post('/:id/reset-password', authenticate, authorize('admin'), async (req,
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
     await db.run('UPDATE users SET password = ? WHERE employee_id = ?', [hashedPassword, req.params.id]);
-    res.json({ success: true, tempPassword: tempPassword });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Check if employees table exists
-router.get('/check-table', authenticate, authorize('admin'), async (req, res) => {
-  try {
-    const db = getDb();
-    const table = await db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'");
-    if (!table) {
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS employees (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          phone TEXT,
-          position TEXT,
-          employee_type TEXT DEFAULT 'sales',
-          salary REAL,
-          hire_date DATE,
-          is_active INTEGER DEFAULT 1,
-          user_id INTEGER
-        )
-      `);
-      res.json({ message: 'Employees table created successfully' });
-    } else {
-      const count = await db.get('SELECT COUNT(*) as count FROM employees');
-      res.json({ message: 'Employees table exists', count: count.count });
-    }
+    res.json({ success: true, tempPassword });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -211,9 +166,8 @@ router.get('/types/list', authenticate, async (req, res) => {
   const types = [
     { value: 'sales', label: 'የሽያጭ ሰራተኛ', code: 'SAL' },
     { value: 'admin', label: 'አስተዳዳሪ', code: 'ADM' },
-    { value: 'manager', label: 'ማኔጅር', code: 'MGR' },
-    { value: 'warehouse', label: 'የመጋዘን ሰራተኛ', code: 'WRH' },
-    { value: 'accountant', label: 'ሂሳብ ሰራተኛ', code: 'ACC' }
+    { value: 'accountant', label: 'ሂሳብ ሰራተኛ', code: 'ACC' },
+    { value: 'warehouse', label: 'የመጋዘን ሰራተኛ', code: 'WRH' }
   ];
   res.json(types);
 });
