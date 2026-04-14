@@ -36,7 +36,7 @@ router.post('/logout', (req, res) => {
 
 router.get('/me', authenticate, async (req, res) => {
   const db = getDb();
-  const user = await db.get('SELECT id, username, full_name, role FROM users WHERE id = ?', req.user.id);
+  const user = await db.get('SELECT id, username, full_name, role, employee_type FROM users WHERE id = ?', req.user.id);
   res.json(user);
 });
 
