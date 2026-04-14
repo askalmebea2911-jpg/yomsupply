@@ -57,7 +57,7 @@ async function initDB() {
       user_id INTEGER
     );
     
-    -- Customers table with credit tracking
+    -- Customers table
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -68,8 +68,7 @@ async function initDB() {
       current_credit REAL DEFAULT 0,
       notes TEXT,
       created_by INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
     -- Credit transactions table
@@ -81,9 +80,7 @@ async function initDB() {
       sale_id INTEGER,
       notes TEXT,
       created_by INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (customer_id) REFERENCES customers(id),
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
     -- Products table
@@ -111,9 +108,7 @@ async function initDB() {
       amount_paid REAL DEFAULT 0,
       remaining REAL DEFAULT 0,
       payment_status TEXT DEFAULT 'unpaid',
-      created_by INTEGER,
-      FOREIGN KEY (customer_id) REFERENCES customers(id),
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_by INTEGER
     );
     
     -- Sale items table
@@ -123,9 +118,7 @@ async function initDB() {
       product_id INTEGER NOT NULL,
       quantity REAL NOT NULL,
       unit_price REAL NOT NULL,
-      total REAL NOT NULL,
-      FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
-      FOREIGN KEY (product_id) REFERENCES products(id)
+      total REAL NOT NULL
     );
     
     -- Vehicles table
@@ -145,8 +138,7 @@ async function initDB() {
       amount REAL NOT NULL,
       expense_date DATE DEFAULT CURRENT_DATE,
       description TEXT,
-      created_by INTEGER,
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_by INTEGER
     );
     
     -- Preorders table
@@ -163,10 +155,7 @@ async function initDB() {
       warehouse_released INTEGER DEFAULT 0,
       warehouse_released_by INTEGER,
       sales_received INTEGER DEFAULT 0,
-      sales_received_by INTEGER,
-      FOREIGN KEY (customer_id) REFERENCES customers(id),
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      sales_received_by INTEGER
     );
     
     -- Warehouse transactions
@@ -177,9 +166,7 @@ async function initDB() {
       quantity REAL NOT NULL,
       notes TEXT,
       created_by INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (created_by) REFERENCES users(id)
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
   
@@ -197,26 +184,54 @@ async function initDB() {
   console.log('Database ready');
 }
 
-initDB();
+// Initialize database and start server
+initDB().catch(err => {
+  console.error('Database init error:', err);
+  process.exit(1);
+});
 
 // ==================== AUTH ROUTES ====================
 app.post('/api/auth/login', async (req, res) => {
-  const { username, password } = req.body;
-  const user = await db.get("SELECT * FROM users WHERE username = ? AND is_active = 1", username);
-  if (!user) return res.status(401).json({ error: 'የተጠቃሚ ስም ወይም ይለፍ ቃል ተሳስቷል' });
-  
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(401).json({ error: 'የተጠቃሚ ስም ወይም ይለፍ ቃል ተሳስቷል' });
-  
-  req.session.userId = user.id;
-  delete user.password;
-  res.json({ success: true, user });
+  try {
+    const { username, password } = req.body;
+    console.log('Login attempt:', username);
+    
+    const user = await db.get("SELECT * FROM users WHERE username = ? AND is_active = 1", username);
+    if (!user) {
+      console.log('User not found:', username);
+      return res.status(401).json({ error: 'የተጠቃሚ ስም ወይም ይለፍ ቃል ተሳስቷል' });
+    }
+    
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      console.log('Invalid password for:', username);
+      return res.status(401).json({ error: 'የተጠቃሚ ስም ወይም ይለፍ ቃል ተሳስቷል' });
+    }
+    
+    req.session.userId = user.id;
+    delete user.password;
+    console.log('Login successful:', username);
+    res.json({ success: true, user });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'የሰርቨር ስህተት' });
+  }
 });
 
 app.get('/api/auth/me', async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: 'እባክዎ ይግቡ' });
-  const user = await db.get("SELECT id, username, full_name, role, employee_type FROM users WHERE id = ?", req.session.userId);
-  res.json(user);
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ error: 'Not logged in' });
+    }
+    const user = await db.get("SELECT id, username, full_name, role, employee_type FROM users WHERE id = ?", req.session.userId);
+    if (!user) {
+      req.session.destroy();
+      return res.status(401).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -343,7 +358,6 @@ app.post('/api/sales', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   const user = await db.get("SELECT role, employee_type FROM users WHERE id = ?", req.session.userId);
   
-  // Only sales staff can create sales
   if (user.role !== 'sales' && user.employee_type !== 'sales') {
     return res.status(403).json({ error: 'የሽያጭ ሰራተኛ ብቻ ሽያጭ መሸጥ ይችላል' });
   }
@@ -393,7 +407,6 @@ app.post('/api/sales', async (req, res) => {
     );
   }
   
-  // Handle credit
   if (customer_id && remaining > 0) {
     await db.run("UPDATE customers SET current_credit = current_credit + ? WHERE id = ?", [remaining, customer_id]);
     await db.run(
@@ -578,7 +591,6 @@ app.post('/api/expenses', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   const user = await db.get("SELECT role, employee_type FROM users WHERE id = ?", req.session.userId);
   
-  // Only admin and accountant can create expenses
   if (user.role !== 'admin' && user.employee_type !== 'accountant') {
     return res.status(403).json({ error: 'ወጪ መዝገብ የሚችሉት አስተዳዳሪ እና ሂሳብ ሰራተኛ ብቻ ናቸው' });
   }
@@ -622,7 +634,6 @@ app.post('/api/preorders', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
   const user = await db.get("SELECT role, employee_type FROM users WHERE id = ?", req.session.userId);
   
-  // Only sales staff can create preorders
   if (user.role !== 'sales' && user.employee_type !== 'sales' && user.role !== 'admin') {
     return res.status(403).json({ error: 'ቅድመ ትዕዛዝ መፍጠር የሚችሉት የሽያጭ ሰራተኞች ብቻ ናቸው' });
   }
@@ -713,19 +724,6 @@ app.post('/api/warehouse/adjust', async (req, res) => {
   res.json({ success: true });
 });
 
-app.get('/api/warehouse/transactions', async (req, res) => {
-  if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
-  const transactions = await db.all(`
-    SELECT w.*, p.name as product_name, u.full_name as created_by_name
-    FROM warehouse_transactions w
-    JOIN products p ON w.product_id = p.id
-    LEFT JOIN users u ON w.created_by = u.id
-    ORDER BY w.created_at DESC
-    LIMIT 100
-  `);
-  res.json(transactions);
-});
-
 // ==================== DASHBOARD ====================
 app.get('/api/dashboard', async (req, res) => {
   if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -769,18 +767,19 @@ app.get('/api/reports/sales', async (req, res) => {
   if (period === 'month') groupBy = "strftime('%Y-%m', sale_date)";
   else if (period === 'year') groupBy = "strftime('%Y', sale_date)";
   
-  const report = await db.all(`
+  let query = `
     SELECT ${groupBy} as date, 
            COUNT(*) as count, 
            COALESCE(SUM(total), 0) as total,
            COALESCE(SUM(amount_paid), 0) as paid
     FROM sales
     WHERE 1=1
-    ${start_date ? `AND DATE(sale_date) >= '${start_date}'` : ''}
-    ${end_date ? `AND DATE(sale_date) <= '${end_date}'` : ''}
-    GROUP BY ${groupBy}
-    ORDER BY date DESC
-  `);
+  `;
+  if (start_date) query += ` AND DATE(sale_date) >= '${start_date}'`;
+  if (end_date) query += ` AND DATE(sale_date) <= '${end_date}'`;
+  query += ` GROUP BY ${groupBy} ORDER BY date DESC`;
+  
+  const report = await db.all(query);
   res.json(report);
 });
 
@@ -800,11 +799,9 @@ app.get('/api/reports/expenses', async (req, res) => {
     FROM expenses
     WHERE 1=1
   `;
-  
   if (start_date) query += ` AND DATE(expense_date) >= '${start_date}'`;
   if (end_date) query += ` AND DATE(expense_date) <= '${end_date}'`;
   if (category && category !== 'all') query += ` AND category = '${category}'`;
-  
   query += ` GROUP BY ${groupBy}, category ORDER BY date DESC`;
   
   const report = await db.all(query);
@@ -858,7 +855,6 @@ app.get('/api/reports/employee-performance', async (req, res) => {
   `;
   if (start_date) query += ` AND DATE(s.sale_date) >= '${start_date}'`;
   if (end_date) query += ` AND DATE(s.sale_date) <= '${end_date}'`;
-  
   query += ` GROUP BY u.id ORDER BY total_sales DESC`;
   
   const report = await db.all(query);
