@@ -1,7 +1,7 @@
 {
-  "name": "yom-sales-new",
+  "name": "yom-sales-final",
   "version": "1.0.0",
-  "description": "Yom Sales Management System",
+  "description": "Yom Sales Management System - Complete",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -12,6 +12,7 @@
     "sqlite": "^5.1.1",
     "bcryptjs": "^2.4.3",
     "express-session": "^1.17.3",
+    "multer": "^1.4.5-lts.1",
     "dotenv": "^16.3.1"
   }
 }
