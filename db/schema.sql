@@ -108,7 +108,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   FOREIGN KEY (created_by) REFERENCES users(id)
 );
 
--- Preorders table
+-- Preorders table with dual confirmation
 CREATE TABLE IF NOT EXISTS preorders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   customer_id INTEGER,
@@ -117,12 +117,20 @@ CREATE TABLE IF NOT EXISTS preorders (
   order_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   expected_date DATE,
   status TEXT DEFAULT 'pending',
+  warehouse_released INTEGER DEFAULT 0,
+  warehouse_released_by INTEGER,
+  warehouse_released_at DATETIME,
+  sales_received INTEGER DEFAULT 0,
+  sales_received_by INTEGER,
+  sales_received_at DATETIME,
   notes TEXT,
   FOREIGN KEY (customer_id) REFERENCES customers(id),
-  FOREIGN KEY (product_id) REFERENCES products(id)
+  FOREIGN KEY (product_id) REFERENCES products(id),
+  FOREIGN KEY (warehouse_released_by) REFERENCES users(id),
+  FOREIGN KEY (sales_received_by) REFERENCES users(id)
 );
 
--- Warehouse transactions table
+-- Warehouse transactions
 CREATE TABLE IF NOT EXISTS warehouse_transactions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   product_id INTEGER NOT NULL,
