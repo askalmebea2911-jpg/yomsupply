@@ -2,7 +2,7 @@
 <html lang="am">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ዮም ሽያጭ ማኔጅመንት ሲስተም</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -42,8 +42,6 @@
         .btn-warning{background:#ed8936;color:white;padding:5px 10px;border:none;border-radius:3px;cursor:pointer;font-size:12px}
         .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000}
         .modal-content{background:white;padding:25px;border-radius:10px;width:450px;max-width:90%}
-        .preview-box{background:#f0f0f0;padding:10px;border-radius:5px;margin-top:10px;text-align:center}
-        .preview-box span{font-weight:bold;font-size:16px;color:#667eea}
         .error{color:red;text-align:center;margin-top:10px}
         @media (max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}.content{padding:15px}}
     </style>
@@ -70,10 +68,7 @@
             </div>
         </div>
         
-        <div class="nav-menu" id="navMenu">
-            <!-- Menu will be dynamically loaded based on role -->
-        </div>
-        
+        <div class="nav-menu" id="navMenu"></div>
         <div class="content" id="content"></div>
     </div>
     
@@ -107,75 +102,34 @@
                 if (res.ok) {
                     currentUser = await res.json();
                     document.getElementById('userName').innerText = currentUser.full_name;
-                    let roleText = '';
-                    if (currentUser.role === 'admin') roleText = 'አስተዳዳሪ';
-                    else if (currentUser.role === 'sales') roleText = 'የሽያጭ ሰራተኛ';
-                    else if (currentUser.role === 'warehouse') roleText = 'የመጋዘን ሰራተኛ';
-                    else if (currentUser.role === 'accountant') roleText = 'ሂሳብ ሰራተኛ';
-                    else roleText = 'ሰራተኛ';
+                    let roleText = currentUser.role === 'admin' ? 'አስተዳዳሪ' : 'ሰራተኛ';
                     document.getElementById('userRole').innerText = '(' + roleText + ')';
                     document.getElementById('loginPage').style.display = 'none';
                     document.getElementById('dashboard').style.display = 'block';
                     loadMenu();
                     showPage('dashboard');
                 }
-            } catch(e) {}
+            } catch(e) { console.log(e); }
         }
         
         function loadMenu() {
             const navMenu = document.getElementById('navMenu');
             let buttons = '';
             
-            // Dashboard - everyone
             buttons += '<button class="nav-btn" onclick="showPage(\'dashboard\')">📊 ዳሽቦርድ</button>';
-            
-            // Customers - admin and sales
-            if (currentUser.role === 'admin' || currentUser.role === 'sales') {
-                buttons += '<button class="nav-btn" onclick="showPage(\'customers\')">👥 ደንበኞች</button>';
-            }
-            
-            // Products - everyone can view
+            buttons += '<button class="nav-btn" onclick="showPage(\'customers\')">👥 ደንበኞች</button>';
             buttons += '<button class="nav-btn" onclick="showPage(\'products\')">📦 ምርቶች</button>';
             
-            // Sales - sales staff only (not admin)
-            if (currentUser.role === 'sales') {
-                buttons += '<button class="nav-btn" onclick="showPage(\'sales\')">💰 ሽያጭ</button>';
-            }
-            
-            // Sales list - admin and accountant
-            if (currentUser.role === 'admin' || currentUser.role === 'accountant') {
-                buttons += '<button class="nav-btn" onclick="showPage(\'sales-list\')">📋 የሽያጭ ዝርዝር</button>';
-            }
-            
-            // Employees - admin only
             if (currentUser.role === 'admin') {
+                buttons += '<button class="nav-btn" onclick="showPage(\'sales-list\')">💰 ሽያጮች</button>';
                 buttons += '<button class="nav-btn" onclick="showPage(\'employees\')">👨‍💼 ሰራተኞች</button>';
-                buttons += '<button class="nav-btn" onclick="showPage(\'users\')">👤 ተጠቃሚዎች</button>';
-            }
-            
-            // Vehicles - admin and warehouse
-            if (currentUser.role === 'admin' || currentUser.role === 'warehouse') {
                 buttons += '<button class="nav-btn" onclick="showPage(\'vehicles\')">🚗 ተሽከርካሪዎች</button>';
-            }
-            
-            // Expenses - admin and accountant
-            if (currentUser.role === 'admin' || currentUser.role === 'accountant') {
                 buttons += '<button class="nav-btn" onclick="showPage(\'expenses\')">💸 ወጪዎች</button>';
-            }
-            
-            // Preorders - sales, admin, warehouse
-            if (currentUser.role === 'sales' || currentUser.role === 'admin' || currentUser.role === 'warehouse') {
                 buttons += '<button class="nav-btn" onclick="showPage(\'preorders\')">📋 ቅድመ ትዕዛዝ</button>';
-            }
-            
-            // Warehouse - admin and warehouse
-            if (currentUser.role === 'admin' || currentUser.role === 'warehouse') {
                 buttons += '<button class="nav-btn" onclick="showPage(\'warehouse\')">🏪 መጋዘን</button>';
-            }
-            
-            // Reports - admin and accountant
-            if (currentUser.role === 'admin' || currentUser.role === 'accountant') {
                 buttons += '<button class="nav-btn" onclick="showPage(\'reports\')">📈 ሪፖርቶች</button>';
+            } else {
+                buttons += '<button class="nav-btn" onclick="showPage(\'sales\')">💰 ሽያጭ</button>';
             }
             
             navMenu.innerHTML = buttons;
@@ -193,8 +147,6 @@
                 body: JSON.stringify({ username, password })
             });
             if (res.ok) {
-                const data = await res.json();
-                currentUser = data.user;
                 location.reload();
             } else {
                 const err = await res.json();
@@ -231,10 +183,6 @@
                 document.getElementById('pwdMsg').innerHTML = '<span style="color:red">ይለፍ ቃሎች አይመሳሰሉም</span>';
                 return;
             }
-            if (newPwd.length < 4) {
-                document.getElementById('pwdMsg').innerHTML = '<span style="color:red">ቢያንስ 4 ፊደላት ያስፈልጋሉ</span>';
-                return;
-            }
             const res = await fetchAPI('/api/profile/change-password', {
                 method: 'POST',
                 body: JSON.stringify({ current_password: current, new_password: newPwd })
@@ -251,14 +199,12 @@
         async function showPage(page) {
             document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
             if(event && event.target) event.target.classList.add('active');
-            
             if(page === 'dashboard') await loadDashboard();
             else if(page === 'customers') await loadCustomers();
             else if(page === 'products') await loadProducts();
             else if(page === 'sales') await loadSales();
             else if(page === 'sales-list') await loadSalesList();
             else if(page === 'employees') await loadEmployees();
-            else if(page === 'users') await loadUsers();
             else if(page === 'vehicles') await loadVehicles();
             else if(page === 'expenses') await loadExpenses();
             else if(page === 'preorders') await loadPreorders();
@@ -272,11 +218,9 @@
             document.getElementById('content').innerHTML = `
                 <div class="stats-grid">
                     <div class="stat-card"><h3>📅 የዛሬ ሽያጭ</h3><div class="value">${(data.todaySales || 0).toLocaleString()} ብር</div></div>
-                    <div class="stat-card"><h3>📆 የወሩ ሽያጭ</h3><div class="value">${(data.monthSales || 0).toLocaleString()} ብር</div></div>
                     <div class="stat-card"><h3>👥 ደንበኞች</h3><div class="value">${data.totalCustomers || 0}</div></div>
                     <div class="stat-card"><h3>📦 ምርቶች</h3><div class="value">${data.totalProducts || 0}</div></div>
                     <div class="stat-card"><h3>⚠️ ዝቅተኛ ክምችት</h3><div class="value">${data.lowStockCount || 0}</div></div>
-                    <div class="stat-card"><h3>💸 የዛሬ ወጪ</h3><div class="value">${(data.todayExpenses || 0).toLocaleString()} ብር</div></div>
                 </div>
                 <div class="data-table"><h3>📋 የቅርብ ጊዜ ሽያጮች</h3>
                 <table><thead><tr><th>ተራ ቁጥር</th><th>ደንበኛ</th><th>ጠቅላላ</th><th>ቀን</th></tr></thead>
@@ -293,12 +237,12 @@
                     <div class="form-group"><label>ስልክ</label><input type="text" id="custPhone"></div>
                     <div class="form-group"><label>አድራሻ</label><input type="text" id="custAddress"></div>
                     <div class="form-group"><label>ኢሜል</label><input type="email" id="custEmail"></div>
-                    <div class="form-group"><label>የብድር ገደብ (ብር)</label><input type="number" id="custCredit"></div>
+                    <div class="form-group"><label>የብድር ገደብ</label><input type="number" id="custCredit"></div>
                     <button class="btn-primary" onclick="addCustomer()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3>📋 የደንበኞች ዝርዝር</h3>
                 <table><thead><tr><th>ስም</th><th>ስልክ</th><th>አድራሻ</th><th>የብድር ገደብ</th><th>ድርጊት</th></tr></thead>
-                <tbody>${customers.map(c => `<tr><td>${c.name}</td><td>${c.phone || '-'}</td><td>${c.address || '-'}</td><td>${c.credit_limit} ብር</td><td><button class="btn-danger" onclick="deleteCustomer(${c.id})">ሰርዝ</button> <button class="btn-edit" onclick="editCustomer(${c.id})">አርትዕ</button></td></tr>`).join('')}</tbody>
+                <tbody>${customers.map(c => `<tr><td>${c.name}</td><td>${c.phone || '-'}</td><td>${c.address || '-'}</td><td>${c.credit_limit} ብር</td><td><button class="btn-danger" onclick="deleteCustomer(${c.id})">ሰርዝ</button></td></tr>`).join('')}</tbody>
                 </table></div>
             `;
         }
@@ -317,25 +261,19 @@
             if(confirm('እርግጠኛ ነዎት?')) { await fetchAPI(`/api/customers/${id}`, { method: 'DELETE' }); loadCustomers(); }
         }
         
-        async function editCustomer(id) {
-            const newName = prompt('አዲስ ስም ያስገቡ');
-            if(newName) { await fetchAPI(`/api/customers/${id}`, { method: 'PUT', body: JSON.stringify({ name: newName }) }); loadCustomers(); }
-        }
-        
         async function loadProducts() {
             const res = await fetchAPI('/api/products');
             const products = await res.json();
             document.getElementById('content').innerHTML = `
-                ${currentUser.role === 'admin' ? `
                 <div class="form-container"><h3>➕ አዲስ ምርት</h3>
                     <div class="form-group"><label>ስም</label><input type="text" id="prodName"></div>
                     <div class="form-group"><label>ኮድ</label><input type="text" id="prodCode"></div>
                     <div class="form-group"><label>ምድብ</label><input type="text" id="prodCategory"></div>
-                    <div class="form-group"><label>የሽያጭ ዋጋ (ብር)</label><input type="number" id="prodPrice"></div>
-                    <div class="form-group"><label>የግዢ ዋጋ (ብር)</label><input type="number" id="prodCost"></div>
+                    <div class="form-group"><label>የሽያጭ ዋጋ</label><input type="number" id="prodPrice"></div>
+                    <div class="form-group"><label>የግዢ ዋጋ</label><input type="number" id="prodCost"></div>
                     <div class="form-group"><label>ዝቅተኛ ክምችት</label><input type="number" id="prodMinStock"></div>
                     <button class="btn-primary" onclick="addProduct()">አስገባ</button>
-                </div>` : ''}
+                </div>
                 <div class="data-table"><h3>📦 የምርቶች ዝርዝር</h3>
                 <tr><thead><tr><th>ስም</th><th>ኮድ</th><th>ምድብ</th><th>ዋጋ</th><th>ክምችት</th><th>ዝቅተኛ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${products.map(p => `<tr>
@@ -345,9 +283,9 @@
                     <td>${p.selling_price} ብር</td>
                     <td style="${p.current_stock <= p.min_stock ? 'color:red' : ''}">${p.current_stock}</td>
                     <td>${p.min_stock}</td>
-                    <td>${currentUser.role === 'admin' ? `<button class="btn-danger" onclick="deleteProduct(${p.id})">ሰርዝ</button> <button class="btn-edit" onclick="editProduct(${p.id})">አርትዕ</button>` : 'ማየት ብቻ'}</td>
+                    <td><button class="btn-danger" onclick="deleteProduct(${p.id})">ሰርዝ</button> <button class="btn-edit" onclick="editProduct(${p.id})">አርትዕ</button></td>
                 </tr>`).join('')}</tbody>
-                </table></div>
+                <table></div>
             `;
         }
         
@@ -376,25 +314,11 @@
             const customers = await fetchAPI('/api/customers').then(r=>r.json());
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ሽያጭ</h3>
-                    <div class="form-group"><label>ደንበኛ</label>
-                        <select id="saleCustomer"><option value="">የገንዘብ ግዢ</option>${customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select>
-                    </div>
-                    <div id="saleItems">
-                        <div class="sale-item" style="display:flex; gap:10px; margin-bottom:10px">
-                            <select class="product-select" style="flex:2">
-                                <option value="">ምርት ምረጥ</option>
-                                ${products.map(p => `<option value="${p.id}" data-price="${p.selling_price}" data-stock="${p.current_stock}">${p.name} - ${p.selling_price} ብር (ያለው: ${p.current_stock})</option>`).join('')}
-                            </select>
-                            <input type="number" class="quantity-input" placeholder="ብዛት" style="flex:1">
-                            <button onclick="removeSaleItem(this)" style="background:#e53e3e;color:white;border:none;padding:5px 10px;border-radius:3px">❌</button>
-                        </div>
-                    </div>
+                    <div class="form-group"><label>ደንበኛ</label><select id="saleCustomer"><option value="">የገንዘብ ግዢ</option>${customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+                    <div id="saleItems"><div class="sale-item" style="display:flex; gap:10px; margin-bottom:10px"><select class="product-select" style="flex:2"><option value="">ምርት ምረጥ</option>${products.map(p => `<option value="${p.id}" data-price="${p.selling_price}">${p.name} - ${p.selling_price} ብር</option>`).join('')}</select><input type="number" class="quantity-input" placeholder="ብዛት" style="flex:1"><button onclick="removeSaleItem(this)" style="background:#e53e3e;color:white;border:none;padding:5px 10px;border-radius:3px">❌</button></div></div>
                     <button class="btn-edit" onclick="addSaleItemRow()" style="margin-bottom:15px">+ ሌላ ምርት ጨምር</button>
-                    <div class="form-group"><label>ቅናሽ (ብር)</label><input type="number" id="saleDiscount" value="0"></div>
+                    <div class="form-group"><label>ቅናሽ</label><input type="number" id="saleDiscount" value="0"></div>
                     <div class="form-group"><label>የተከፈለ</label><input type="number" id="salePaid" value="0"></div>
-                    <div class="form-group"><label>ክፍያ ዘዴ</label>
-                        <select id="saleMethod"><option value="cash">ጥሬ ገንዘብ</option><option value="credit">ብድር</option><option value="bank">ባንክ</option></select>
-                    </div>
                     <button class="btn-primary" onclick="createSale()">ሽያጩን አስመዝግብ</button>
                 </div>
             `;
@@ -426,7 +350,7 @@
             if (items.length === 0) return alert('ቢያንስ አንድ ምርት ይምረጡ');
             const res = await fetchAPI('/api/sales', {
                 method: 'POST',
-                body: JSON.stringify({ items, discount: parseFloat(document.getElementById('saleDiscount').value) || 0, amount_paid: parseFloat(document.getElementById('salePaid').value) || 0, payment_method: document.getElementById('saleMethod').value })
+                body: JSON.stringify({ customer_id: document.getElementById('saleCustomer').value || null, items, discount: parseFloat(document.getElementById('saleDiscount').value) || 0, amount_paid: parseFloat(document.getElementById('salePaid').value) || 0 })
             });
             if (res.ok) { alert('ሽያጩ ተመዝግቧል'); showPage('sales'); }
             else { const err = await res.json(); alert(err.error); }
@@ -451,32 +375,26 @@
         }
         
         async function loadEmployees() {
-            if (currentUser.role !== 'admin') { document.getElementById('content').innerHTML = '<div class="form-container">⛔ ፈቃድ የለዎትም</div>'; return; }
             const res = await fetchAPI('/api/employees');
             const employees = await res.json();
-            const types = await fetchAPI('/api/employees/types/list').then(r=>r.json());
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ሰራተኛ</h3>
                     <div class="form-group"><label>ሙሉ ስም</label><input type="text" id="empName"></div>
                     <div class="form-group"><label>ስልክ</label><input type="text" id="empPhone"></div>
                     <div class="form-group"><label>ሹመት</label><input type="text" id="empPosition"></div>
-                    <div class="form-group"><label>ምድብ</label>
-                        <select id="empType">${types.map(t => `<option value="${t.value}">${t.label} (${t.code})</option>`).join('')}</select>
-                    </div>
+                    <div class="form-group"><label>ምድብ</label><select id="empType"><option value="sales">የሽያጭ</option><option value="warehouse">መጋዘን</option></select></div>
                     <div class="form-group"><label>ደሞዝ</label><input type="number" id="empSalary"></div>
-                    <div class="form-group"><label><input type="checkbox" id="createUser" checked> የተጠቃሚ አካውንት ፍጠር</label></div>
                     <button class="btn-primary" onclick="addEmployee()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3>👨‍💼 የሰራተኞች ዝርዝር</h3>
-                <table><thead><tr><th>ስም</th><th>ስልክ</th><th>ሹመት</th><th>ምድብ</th><th>ደሞዝ</th><th>የተጠቃሚ ስም</th><th>ድርጊት</th></tr></thead>
+                <table><thead><tr><th>ስም</th><th>ስልክ</th><th>ሹመት</th><th>ምድብ</th><th>ደሞዝ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${employees.map(e => `<tr>
                     <td>${e.name}</td>
                     <td>${e.phone || '-'}</td>
                     <td>${e.position || '-'}</td>
                     <td>${e.employee_type}</td>
                     <td>${e.salary || 0} ብር</td>
-                    <td>${e.username || '-'}</td>
-                    <td><button class="btn-danger" onclick="deleteEmployee(${e.id})">ሰርዝ</button> ${e.user_id ? `<button class="btn-warning" onclick="resetEmployeePassword(${e.id})">ፓስወርድ ዳግም አስጀምር</button>` : ''}</td>
+                    <td><button class="btn-danger" onclick="deleteEmployee(${e.id})">ሰርዝ</button></td>
                 </tr>`).join('')}</tbody>
                 </table></div>
             `;
@@ -487,38 +405,14 @@
             if(!name) return alert('ስም ያስገቡ');
             const res = await fetchAPI('/api/employees', {
                 method: 'POST',
-                body: JSON.stringify({ name, phone: document.getElementById('empPhone').value, position: document.getElementById('empPosition').value, employee_type: document.getElementById('empType').value, salary: parseFloat(document.getElementById('empSalary').value) || 0, create_user_account: document.getElementById('createUser').checked })
+                body: JSON.stringify({ name, phone: document.getElementById('empPhone').value, position: document.getElementById('empPosition').value, employee_type: document.getElementById('empType').value, salary: parseFloat(document.getElementById('empSalary').value) || 0 })
             });
             const data = await res.json();
-            if(res.ok && data.userAccount) alert(`የተጠቃሚ ስም: ${data.userAccount.username}\nጊዜያዊ ይለፍ ቃል: ${data.userAccount.tempPassword}`);
+            if(res.ok && data.username) alert(`የተጠቃሚ ስም: ${data.username}\nጊዜያዊ ይለፍ ቃል: ${data.tempPassword}`);
             loadEmployees();
         }
         
         async function deleteEmployee(id) { await fetchAPI(`/api/employees/${id}`, { method: 'DELETE' }); loadEmployees(); }
-        async function resetEmployeePassword(id) {
-            const res = await fetchAPI(`/api/employees/${id}/reset-password`, { method: 'POST' });
-            const data = await res.json();
-            if(res.ok) alert(`አዲስ ጊዜያዊ ይለፍ ቃል: ${data.tempPassword}`);
-        }
-        
-        async function loadUsers() {
-            if (currentUser.role !== 'admin') { document.getElementById('content').innerHTML = '<div class="form-container">⛔ ፈቃድ የለዎትም</div>'; return; }
-            const users = await fetchAPI('/api/users').then(r=>r.json());
-            document.getElementById('content').innerHTML = `
-                <div class="data-table"><h3>👤 የተጠቃሚዎች ዝርዝር</h3>
-                <table><thead><tr><th>ስም</th><th>ሙሉ ስም</th><th>ሚና</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
-                <tbody>${users.map(u => `<tr>
-                    <td>${u.username}</td>
-                    <td>${u.full_name}</td>
-                    <td>${u.role}</td>
-                    <td>${u.is_active ? 'ንቁ' : 'ተቋርጧል'}</td>
-                    <td>${u.id !== currentUser.id ? `<button class="btn-danger" onclick="deleteUser(${u.id})">ሰርዝ</button>` : '👑'}</td>
-                </tr>`).join('')}</tbody>
-                </table></div>
-            `;
-        }
-        
-        async function deleteUser(id) { await fetchAPI(`/api/users/${id}`, { method: 'DELETE' }); loadUsers(); }
         
         async function loadVehicles() {
             const res = await fetchAPI('/api/vehicles');
@@ -532,7 +426,7 @@
                     <button class="btn-primary" onclick="addVehicle()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3>🚗 የተሽከርካሪዎች ዝርዝር</h3>
-                <table><thead><tr><th>ታርጋ</th><th>ሞዴል</th><th>ሹፌር</th><th>ስልክ</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
+                <td><thead><tr><th>ታርጋ</th><th>ሞዴል</th><th>ሹፌር</th><th>ስልክ</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${vehicles.map(v => `<tr>
                     <td>${v.plate_number}</td>
                     <td>${v.model || '-'}</td>
@@ -540,7 +434,7 @@
                     <td>${v.driver_phone || '-'}</td>
                     <td>${v.status}</td>
                     <td><button class="btn-danger" onclick="deleteVehicle(${v.id})">ሰርዝ</button></td>
-                </tr>`).join('')}</tbody>
+                <tr>`).join('')}</tbody>
                 </table></div>
             `;
         }
@@ -559,17 +453,15 @@
             const expenses = await res.json();
             document.getElementById('content').innerHTML = `
                 <div class="form-container"><h3>➕ አዲስ ወጪ</h3>
-                    <div class="form-group"><label>ምድብ</label>
-                        <select id="expCategory"><option value="fuel">⛽ ነዳጅ</option><option value="maintenance">🔧 ጥገና</option><option value="salary">💰 ደሞዝ</option><option value="other">📋 ሌላ</option></select>
-                    </div>
-                    <div class="form-group"><label>ገንዘብ (ብር)</label><input type="number" id="expAmount"></div>
+                    <div class="form-group"><label>ምድብ</label><select id="expCategory"><option value="fuel">ነዳጅ</option><option value="maintenance">ጥገና</option><option value="salary">ደሞዝ</option><option value="other">ሌላ</option></select></div>
+                    <div class="form-group"><label>ገንዘብ</label><input type="number" id="expAmount"></div>
                     <div class="form-group"><label>ማብራሪያ</label><input type="text" id="expDesc"></div>
                     <button class="btn-primary" onclick="addExpense()">አስገባ</button>
                 </div>
                 <div class="data-table"><h3>💸 የወጪ ዝርዝር</h3>
-                <tr><thead><tr><th>ምድብ</th><th>ገንዘብ</th><th>ማብራሪያ</th><th>ቀን</th><th>ድርጊት</th></tr></thead>
+                <table><thead><tr><th>ምድብ</th><th>ገንዘብ</th><th>ማብራሪያ</th><th>ቀን</th><th>ድርጊት</th></tr></thead>
                 <tbody>${expenses.map(e => `<tr>
-                    <td>${e.category === 'fuel' ? '⛽ ነዳጅ' : (e.category === 'maintenance' ? '🔧 ጥገና' : (e.category === 'salary' ? '💰 ደሞዝ' : '📋 ሌላ'))}</td>
+                    <td>${e.category === 'fuel' ? 'ነዳጅ' : (e.category === 'maintenance' ? 'ጥገና' : (e.category === 'salary' ? 'ደሞዝ' : 'ሌላ'))}</td>
                     <td>${e.amount} ብር</td><td>${e.description || '-'}</td><td>${e.expense_date}</td>
                     <td><button class="btn-danger" onclick="deleteExpense(${e.id})">ሰርዝ</button></td>
                 </tr>`).join('')}</tbody>
@@ -590,34 +482,21 @@
             const preorders = await fetchAPI('/api/preorders').then(r=>r.json());
             const products = await fetchAPI('/api/products').then(r=>r.json());
             const customers = await fetchAPI('/api/customers').then(r=>r.json());
-            
-            let createForm = '';
-            if (currentUser.role === 'sales' || currentUser.role === 'admin') {
-                createForm = `
-                    <div class="form-container"><h3>➕ አዲስ ቅድመ ትዕዛዝ</h3>
-                        <div class="form-group"><label>ደንበኛ</label><select id="preCustomer"><option value="">ያለ ደንበኛ</option>${customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
-                        <div class="form-group"><label>ምርት</label><select id="preProduct">${products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
-                        <div class="form-group"><label>ብዛት</label><input type="number" id="preQuantity"></div>
-                        <div class="form-group"><label>የሚጠበቅበት ቀን</label><input type="date" id="preDate"></div>
-                        <button class="btn-primary" onclick="addPreorder()">አስገባ</button>
-                    </div>
-                `;
-            }
-            
-            document.getElementById('content').innerHTML = createForm + `
+            document.getElementById('content').innerHTML = `
+                <div class="form-container"><h3>➕ አዲስ ቅድመ ትዕዛዝ</h3>
+                    <div class="form-group"><label>ደንበኛ</label><select id="preCustomer"><option value="">ያለ ደንበኛ</option>${customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}</select></div>
+                    <div class="form-group"><label>ምርት</label><select id="preProduct">${products.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}</select></div>
+                    <div class="form-group"><label>ብዛት</label><input type="number" id="preQuantity"></div>
+                    <button class="btn-primary" onclick="addPreorder()">አስገባ</button>
+                </div>
                 <div class="data-table"><h3>📋 የቅድመ ትዕዛዝ ዝርዝር</h3>
-                <table><thead><tr><th>ደንበኛ</th><th>ምርት</th><th>ብዛት</th><th>ሁኔታ</th><th>ከመጋዘን ተልቋል?</th><th>ተቀብሏል?</th><th>ድርጊት</th></tr></thead>
+                <table><thead><tr><th>ደንበኛ</th><th>ምርት</th><th>ብዛት</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${preorders.map(p => `<tr>
                     <td>${p.customer_name || '-'}</td>
                     <td>${p.product_name || '-'}</td>
                     <td>${p.quantity}</td>
                     <td>${p.status === 'pending' ? '⏳ በመጠባበቅ' : '✅ ተጠናቅቋል'}</td>
-                    <td>${p.warehouse_released ? '✅' : '❌'}</td>
-                    <td>${p.sales_received ? '✅' : '❌'}</td>
-                    <td>${currentUser.role === 'warehouse' && !p.warehouse_released ? `<button class="btn-warning" onclick="warehouseRelease(${p.id})">📦 ከመጋዘን አውጣ</button>` : ''}
-                        ${currentUser.role === 'sales' && p.warehouse_released && !p.sales_received ? `<button class="btn-edit" onclick="salesReceive(${p.id})">✅ ተቀብያለሁ</button>` : ''}
-                        ${currentUser.role === 'admin' ? `<button class="btn-danger" onclick="deletePreorder(${p.id})">🗑 ሰርዝ</button>` : ''}
-                       </td>
+                    <td><button class="btn-danger" onclick="deletePreorder(${p.id})">ሰርዝ</button> <button class="btn-edit" onclick="completePreorder(${p.id})">አጠናቅቅ</button></td>
                 </tr>`).join('')}</tbody>
                 </table></div>
             `;
@@ -627,45 +506,30 @@
             const productId = document.getElementById('preProduct').value;
             const qty = document.getElementById('preQuantity').value;
             if(!productId || !qty) return alert('ምርት እና ብዛት ያስገቡ');
-            await fetchAPI('/api/preorders', { method: 'POST', body: JSON.stringify({ customer_id: document.getElementById('preCustomer').value || null, product_id: parseInt(productId), quantity: parseFloat(qty), expected_date: document.getElementById('preDate').value }) });
+            await fetchAPI('/api/preorders', { method: 'POST', body: JSON.stringify({ customer_id: document.getElementById('preCustomer').value || null, product_id: parseInt(productId), quantity: parseFloat(qty) }) });
             loadPreorders();
         }
         
-        async function warehouseRelease(id) {
-            if(confirm('እቃውን ከመጋዘን አውጥተህ ለሽያጭ ሰራተኛ ሰጥተሃል?')) {
-                await fetchAPI(`/api/preorders/${id}/warehouse-release`, { method: 'PUT' });
-                loadPreorders();
-            }
-        }
-        
-        async function salesReceive(id) {
-            if(confirm('እቃውን ከመጋዘን ሰራተኛ ተቀብያለሁ?')) {
-                await fetchAPI(`/api/preorders/${id}/sales-receive`, { method: 'PUT' });
-                loadPreorders();
-            }
-        }
-        
         async function deletePreorder(id) { await fetchAPI(`/api/preorders/${id}`, { method: 'DELETE' }); loadPreorders(); }
+        async function completePreorder(id) { await fetchAPI(`/api/preorders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'completed' }) }); loadPreorders(); }
         
         async function loadWarehouse() {
             const summary = await fetchAPI('/api/warehouse/summary').then(r=>r.json());
             const products = await fetchAPI('/api/products').then(r=>r.json());
             document.getElementById('content').innerHTML = `
-                ${currentUser.role === 'warehouse' || currentUser.role === 'admin' ? `
                 <div class="form-container"><h3>📦 ክምችት ጨምር</h3>
                     <div class="form-group"><label>ምርት</label><select id="stockProduct">${products.map(p => `<option value="${p.id}">${p.name} (ያለው: ${p.current_stock})</option>`).join('')}</select></div>
                     <div class="form-group"><label>ብዛት</label><input type="number" id="stockQuantity"></div>
-                    <div class="form-group"><label>ማብራሪያ</label><input type="text" id="stockNote"></div>
                     <button class="btn-primary" onclick="addStock()">ክምችት ጨምር</button>
-                </div>` : ''}
+                </div>
                 <div class="data-table"><h3>📊 የክምችት ማጠቃለያ</h3>
-                <table><thead><tr><th>ምርት</th><th>ክምችት</th><th>ዝቅተኛ</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
+                <tr><thead><tr><th>ምርት</th><th>ክምችት</th><th>ዝቅተኛ</th><th>ሁኔታ</th><th>ድርጊት</th></tr></thead>
                 <tbody>${summary.map(p => `<tr>
                     <td>${p.name}</td>
-                    <td style="${p.current_stock <= p.min_stock ? 'color:red; font-weight:bold' : ''}">${p.current_stock}</td>
+                    <td style="${p.current_stock <= p.min_stock ? 'color:red' : ''}">${p.current_stock}</td>
                     <td>${p.min_stock}</td>
-                    <td>${p.current_stock <= p.min_stock ? '⚠️ ዝቅተኛ ክምችት!' : '✅ በቂ'}</td>
-                    <td>${currentUser.role === 'warehouse' || currentUser.role === 'admin' ? `<button class="btn-warning" onclick="adjustStockPrompt(${p.id})">🔧 አስተካክል</button>` : 'ማየት ብቻ'}</td>
+                    <td>${p.current_stock <= p.min_stock ? '⚠️ ዝቅተኛ' : '✅ በቂ'}</td>
+                    <td><button class="btn-warning" onclick="adjustStock(${p.id})">አስተካክል</button></td>
                 </tr>`).join('')}</tbody>
                 </table></div>
             `;
@@ -674,20 +538,15 @@
         async function addStock() {
             const productId = document.getElementById('stockProduct').value;
             const qty = document.getElementById('stockQuantity').value;
-            if(!productId || !qty || qty <= 0) return alert('ትክክለኛ ብዛት ያስገቡ');
-            await fetchAPI('/api/warehouse/add-stock', { method: 'POST', body: JSON.stringify({ product_id: parseInt(productId), quantity: parseFloat(qty), notes: document.getElementById('stockNote').value || 'ክምችት መጨመር' }) });
+            if(!productId || !qty) return alert('ትክክለኛ ብዛት ያስገቡ');
+            await fetchAPI('/api/warehouse/add-stock', { method: 'POST', body: JSON.stringify({ product_id: parseInt(productId), quantity: parseFloat(qty) }) });
             alert('ክምችት ተጨምሯል');
             loadWarehouse();
         }
         
-        function adjustStockPrompt(productId) {
+        async function adjustStock(productId) {
             const newStock = prompt('አዲስ ክምችት ቁጥር ያስገቡ:');
-            if(newStock !== null) { adjustStock(productId, parseFloat(newStock)); }
-        }
-        
-        async function adjustStock(productId, newStock) {
-            await fetchAPI('/api/warehouse/adjust', { method: 'POST', body: JSON.stringify({ product_id: productId, quantity: newStock, reason: 'በእጅ ማስተካከያ' }) });
-            alert('ክምችት ተስተካክሏል');
+            if(newStock) await fetchAPI('/api/warehouse/adjust', { method: 'POST', body: JSON.stringify({ product_id: productId, quantity: parseFloat(newStock) }) });
             loadWarehouse();
         }
         
@@ -701,7 +560,7 @@
                     <div class="stat-card"><h3>📈 የተጣራ ትርፍ</h3><div class="value">${(profit.net_profit || 0).toLocaleString()} ብር</div></div>
                 </div>
                 <div class="data-table"><h3>📅 የሽያጭ ሪፖርት</h3>
-                <table><thead><tr><th>ቀን</th><th>ብዛት</th><th>ጠቅላላ</th><th>የተከፈለ</th></tr></thead>
+                <tr><thead><tr><th>ቀን</th><th>ብዛት</th><th>ጠቅላላ</th><th>የተከፈለ</th></tr></thead>
                 <tbody>${sales.map(r => `<tr>
                     <td>${r.date}</td>
                     <td>${r.count}</td>
